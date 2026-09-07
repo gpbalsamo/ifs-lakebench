@@ -6,6 +6,25 @@ The motivating use case so far, and the one driving the choice of observational 
 
 Seven lakes now have a complete, spun-up 2017-2022 simulation: **Lake Ladoga** (`Ld-001`, the starting point) plus six more from `sites/candidate_lakes.csv` — Baringo, Chilwa, Kyoga, Mweru Wantipa, Tana and Victoria. All forced from ECMWF operational analysis. See [Current status](#current-status) and, importantly, [Spin-up doesn't always converge the same way](#spin-up-doesnt-always-converge-the-same-way) before running a new lake.
 
+## Setup
+
+```bash
+cd $PERM   # or wherever you keep sibling ECMWF repos side by side
+git clone git@github.com:gpbalsamo/ifs-lakebench.git
+```
+
+This repo expects to sit **next to** two siblings it reuses rather than reimplements — clone them alongside it if you don't already have them:
+
+```bash
+git clone git@github.com:gpbalsamo/plumber2-ecland.git
+```
+
+`../ecland-portal` ("ecLand Anywhere") is currently a local-only repo with no remote configured — it isn't `git clone`-able yet. Get a copy from whoever holds it (or push it to a remote first) before running the physiography step in [Quick start](#quick-start).
+
+See [Relationship to sibling repos](#relationship-to-sibling-repos) below for what each contributes, and [Known issues](#known-issues) for the one thing every run needs regardless of lake: a double-precision `ecland-master-dp` build (a single-precision `ecland-master` silently produces wrong, frozen output). Module sets for extraction vs. model runs differ and must not be merged — see step 3 of [Quick start](#quick-start) and step 4 for which set each stage needs.
+
+Nothing under `forcing/`, `clim/`, `output/` etc. is in Git (they're generated data, often TBs of it) — see [Repository layout](#repository-layout) for what lives where and [Quick start](#quick-start) to (re)generate it for a lake.
+
 ## Relationship to sibling repos
 
 This repo does not re-derive the ecLand run/namelist machinery; it reuses it.
@@ -190,9 +209,123 @@ Both are currently stubs — see [Open work](#open-work).
 
 Name new variants `namelist_ecland_lake_<variant>`, matching the plumber2-ecland convention.
 
+## Re-running against a different ecLand build
+
+`scripts/run_lake_pipeline.sh` takes `ECLAND_MASTER_DP`, `OUTPUT_DIR`,
+`OUTPUT_SPUNUP_DIR`, `CLIM_SPUNUP_DIR` and `WORK_DIR` from the environment
+(defaults reproduce the as-recorded configuration), so the same lakes can be
+re-run against a candidate build without touching `output/` or
+`output_spunup/`. `retest/run_retest.sbatch` wraps that as one SLURM job per
+lake, writing into `retest/<variant>/`; `retest/lakes.txt` holds the seven
+lakes with the NLOOP each needs. `scripts/compare_lake_runs.py` then diffs two
+run trees field by field:
+
+```bash
+sbatch --export=ALL,VARIANT=mybuild,SITE=Ld-001,LAT=60.765,LON=31.648,NLOOP=8,\
+MASTER=/path/to/ecland-master-dp retest/run_retest.sbatch
+python3 scripts/compare_lake_runs.py --ref output_spunup --new retest/mybuild/output_spunup
+```
+
+**Always build and run the candidate's own base commit as a control, not just
+the recorded results.** `/perm/pad/ecland/build/bin/ecland-master-dp` is a live
+development build that moves; the binary that produced `output_spunup/` is not
+necessarily the one there now. A control built from the candidate's merge base
+attributes every difference to the change under test. Building one is cheap:
+a private bundle whose `source/` symlinks `ecbuild`, `eccodes`, `fiat` and
+`field_api` to the existing checkouts under `/perm/pad/ecland/source/` and
+points `ecland` at a `git worktree` of the commit, configured with
+`-DCMAKE_BUILD_TYPE=BIT` and the `prgenv/intel intel/2021.4 hpcx-openmpi/2.9
+netcdf4/4.9.1` module set, takes ~4 minutes. Note that `ecland_surf_dp` is a
+*shared* library: after editing a `src/surf/module/` file, `make` updates
+`lib64/libecland_surf_dp.so` and does **not** relink `bin/ecland-master-dp`, so
+an unchanged executable mtime/checksum does not mean the rebuild was a no-op.
+
+### Retest: `gpbalsamo/ecland@soil_water_flake_port` (2026-09-06) -- does not run these lakes
+
+All seven lakes were re-run against `e6d7e0a` ("Port FLake variable
+lake+floodplain depth (LDEPTHF) from ifs-source"), with `ef19d7b`, the commit
+it sits on, built and run as the control. The control reproduced the archived
+`output_spunup/` results **bit-for-bit** for all seven lakes, so everything
+below is attributable to the port commit alone. The port is **not usable for
+this benchmark as it stands** -- four separate findings, in the order they were
+hit:
+
+1. **It does not compile.** `sussurf_params.F90` copies six new FLake
+   parameters (`RDEPTH_W_MIX_IW`, `TMNW_NDG_TIMESCL`, `TMNW_NDG_RDSCL`,
+   `LFLAKE_BOTSED`, `RDEPTH_BOTSED`, `RPHI_BOTSED_PR0`) out of `TMP_SURF`, but
+   the commit never adds them to the `TESURF` type they are read from --
+   `src/surf/module/yos_nampars1.F90` is not among its 20 files. Six ifort
+   `error #6460`s. Fix: `retest/patches/0001-add-missing-TESURF-flake-components.patch`.
+
+2. **With that fixed it builds, runs, exits 0 -- and FLake never runs.** Every
+   FLake variable sits at its initialisation default for the whole 6 years
+   (`AvgSurfT` = `TLMNW` = `TLWML` = `TLBOT` = 288.15 K, `TLICE` = 271.46 K,
+   `HLML` = `LDEPTH`, no ice), at all seven lakes. Cause: `surfbc_ctl_mod.F90`
+   changes the lake test to
+
+   ```fortran
+   LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. (PCLAKE(JL) > (1.0_JPRB-PLSM(JL)/2.0_JPRB)))
+   ```
+
+   Our physiography (ecland-portal `which_surface: lake`) gives `landsea = 0.0`
+   and `CLAKE = 1.0`, so `LDLAND` is false and the second test demands
+   `CLAKE > 1.0` -- unsatisfiable. FLake is switched off at exactly the points
+   this repo exists to simulate. (The old test, `CLAKE > 0.5`, passed.) This is
+   a boundary case a fully-resolved lake point hits and a subgrid lake over
+   land does not, which is presumably why it survived wherever the port came
+   from. **Note how this fails**: `check_spinup_convergence.py` reports
+   `delta = 0.00000` from loop 2 on -- indistinguishable, at a glance, from
+   perfect convergence. A constant column is not a converged one; check the
+   *values*, not just the deltas.
+
+3. **Relax that test and it crashes.** With `>` changed to `>=` (diagnostic
+   only: `retest/patches/0002-diagnostic-LDLAKE-boundary.patch`), both lakes
+   tried died within 12 s on `forrtl: error (75): floating point exception` in
+   `surfrad_ctl_mod`. The port also adds, in `surfbc_ctl_mod.F90`,
+   `IF (KSOTY(JL) == 0 .AND. LDLAKE(JL)) KSOTY(JL) = 2`. Our lake points have
+   `sotype = 0`, so their per-point soil parameters (`RWCAPM3D`, `RWPWPM3D` in
+   `PSSDP3`) were filled as zeros at setup; the override then sends
+   `surfrad_ctl_mod.F90:373` down its `KSOTY > 0` branch, which evaluates
+   `1.0/(RWCAPM3D-RWPWPM3D)` = 1/0. (`srfcotwo_mod.F90:346` guards the same
+   quantity with `IF (RWCAPM3D /= 0)`; `surfrad_ctl_mod.F90` does not.)
+   Confirmed by re-running with only that reassignment commented out: the FPE
+   goes away.
+
+4. **Running at last, the answers are unphysical.** With FLake re-enabled and
+   the `KSOTY` override removed, Chilwa completes but its lake temperature
+   reaches **368 K (95 C)**, mean +6.1 K against the control's 290-307 K. The
+   port adds an unconditional nudging of mean lake temperature to soil
+   temperature at level 1, `exp(-TMNW_NDG_RDSCL*(D-RDEPTH_W_MIN))` weighting a
+   1800 s e-folding time. With `ZDEPTH_W` clipped to [2, 50] m, a 1 m lake gets
+   the full-strength 1800 s nudge -- and at a 100 %-lake point the "soil"
+   column it is nudged towards is degenerate (`sotype = 0`, `SoilMoist = 0`),
+   free to run far hotter than any lake. `SoilTemp[1]` and `AvgSurfT` come out
+   identical to 4 decimals, i.e. the lake is slaved to that column. By the same
+   arithmetic the nudge is ~10 h for a 3 m lake and negligible from 10 m up, so
+   the shallow lakes are worst hit -- exactly the ones the feature targets.
+
+**`LDEPTHF` itself is inert here regardless.** `ecland_climate_type_mod.F90`
+still binds the physics' `PLDEPTH` to `VFLDEPTH` (the static depth);
+`VFLDEPTHF` is read, carried and written to the restart, but only `cnt41s.F90`'s
+CaMa-Flood branches ever give it a different value, and that coupling is not
+active in these runs. `rdclim.F90` handles its absence from our `surfclim`
+cleanly (`"LDEPTHF not found, set == to LDEPTH"`). So the port's headline field
+cannot change an offline lake run; what changes the results is everything else
+in the commit.
+
+**Where this leaves things**: the seven-lake results in `output_spunup/` stand
+as the reference. Re-test the branch once findings 1-3 are fixed upstream; the
+nudging (finding 4) needs a decision about what it should do at a
+fully-resolved lake point, where there is no meaningful soil temperature to nudge
+towards -- `TMNW_NDG_TIMESCL` can be set to a very large value in `NAMPARFLAKE`
+to switch nudging off, which the code comments in `yos_flake.F90` explicitly
+anticipate. Runs, logs and the diagnostic patches are under `retest/`.
+
 ## Known issues
 
 **The ecland-master binary you pick matters more than anything in the namelist, and picking the wrong one fails silently.** Confirmed 2026-09-04 on the 10-day Ladoga smoke test: `/perm/pad/ecland-build/bin/ecland-master` (single-precision) runs to completion, writes all expected output files, and reports no error — but every FLake variable in `o_gg.nc` (`AvgSurfT`, `TLMNW`, `TLWML`, `TLBOT`, `HLICE`, `HLML`) jumps to a constant default (288.15 K / 50 m) after the *first* timestep and never moves again, for the entire run. `/perm/pad/ecland/build/bin/ecland-master-dp` (double-precision), run against the byte-identical namelist, forcing and physiography, instead produces a physically evolving lake state (cooling, then freezing, in a January cold snap) — matching an independent reference run (ecland-portal job `20260904T145308_Ld-004`, MARS-forced, 1 day) exactly on the overlapping period. **Use `ecland-master-dp`.** The single-precision build is not merely lower-precision here; something in it silently drops FLake to a fallback state.
+
+**A silently frozen lake state has now been seen twice, from two unrelated causes** -- the single-precision binary above, and `soil_water_flake_port` disabling `LDLAKE` at 100%-lake points (see [Retest](#retest-gpbalsamoeclandsoil_water_flake_port-2026-09-06----does-not-run-these-lakes)). Both exit 0, write every expected file, and produce a `check_spinup_convergence.py` table of `delta = 0.00000`. Treat a constant FLake column as a failure signature in its own right: look at the values, not only the loop-to-loop deltas.
 
 **`o_lke.nc` cannot be produced by any locally available build.** Tried with `LWRLKE=.TRUE.` on all four builds under `$PERM` (`ecland-build`, `ecland-build_dev`, `ecland-build_v1.0`, and `ecland-master-dp` itself) — every one aborts with `NETCDF-FILE o_lke.nc not Available ! check previous model versions`; the namelist flag exists but the writer isn't compiled into any of these binaries. This doesn't block anything, though: `o_gg.nc` already carries FLake's complete prognostic state per grid point (see the namelist's own comment for the field list) — that's what `scripts/postproc_lake.py` should read once it's implemented, not `o_lke.nc`.
 
@@ -219,6 +352,7 @@ ifs-lakebench/
 │   ├── ecland_runtime.sh        # /
 │   ├── ecland_create_namelist.py# /
 │   ├── check_spinup_convergence.py # read end-of-loop FLake state from an -l N run, report loop-to-loop change
+│   ├── compare_lake_runs.py     # diff two run trees field by field (one ecLand build against another)
 │   ├── run_lake_pipeline.sh     # merge -> namelists -> spin-up -> scored run, one call per lake
 │   ├── postproc_lake.py         # STUB: raw ecLand output -> lake variable schema
 │   └── benchmark_lake.py        # STUB: score against ESA-CCI-Lakes observations
@@ -229,6 +363,11 @@ ifs-lakebench/
 │   ├── logs/                    # get_forcing_ecfs.sbatch stdout/stderr -- not in git
 │   └── CCI_LAKES/               # ecLand-ready, point-extracted forcing (NetCDF) -- not in git
 ├── obs/                         # ESA-CCI-Lakes observational product -- not sourced yet, not in git
+├── retest/                      # re-runs against a non-default ecLand build
+│   ├── run_retest.sbatch        #   \_ one job per lake per build, into retest/<variant>/
+│   ├── lakes.txt                #   \_ the seven lakes and the NLOOP each needs
+│   ├── patches/                 #   \_ source patches applied to a candidate branch
+│   └── <variant>/               #   \_ that build's run tree -- not in git
 ├── output/                      # raw model output -- not in git
 ├── postprocessed/               # post-processed output -- not in git
 └── benchmark/dashboards/        # metrics + dashboard per run -- checked in, once real
@@ -239,6 +378,7 @@ Note: `forcing/raw/`, `forcing/_decompressed_cache/` and `forcing/logs/` above l
 ## Open work
 
 - **Resolve Victoria's spin-up properly** (see [Spin-up doesn't always converge the same way](#spin-up-doesnt-always-converge-the-same-way)) — likely needs a real multi-year spin-up sequence rather than more loops of one repeated year, if the deep-water (`TLBOT`) state turns out to matter for this lake.
+- **Re-test `soil_water_flake_port` once it is fixed** (see [Retest](#retest-gpbalsamoeclandsoil_water_flake_port-2026-09-06----does-not-run-these-lakes)): the build fix in `retest/patches/0001` wants folding in upstream, and the `LDLAKE` boundary, the `KSOTY` override and the soil-temperature nudging each need a decision about what they should do at a fully-resolved (`landsea = 0`, `CLAKE = 1`) lake point. `retest/run_retest.sbatch` re-runs all seven lakes against a new build unchanged.
 - **Add more lakes.** `sites/candidate_lakes.csv` is currently empty (all six of its previous entries completed and moved to `sites/lakes.csv`) — add the next batch there with the same physical-parameter columns, then run each through ecland-portal physiography + `extract_point_forcing_ecfs.sbatch` (one job per year) + `scripts/run_lake_pipeline.sh`.
 - **Source the ESA-CCI-Lakes observational product.** Most likely the lake surface water temperature (LSWT) product; possibly also ice cover/duration. Nothing CCI-Lakes-shaped was found under `$PERM` while setting this repo up.
 - **Implement `postproc_lake.py`** to read the FLake fields from `o_gg.nc` (see [Known issues](#known-issues) for the field list — confirmed present, physically evolving and stable across a full 6-year run, for seven lakes with widely varying depth and climate now) into whatever schema `benchmark_lake.py` ends up scoring against.
