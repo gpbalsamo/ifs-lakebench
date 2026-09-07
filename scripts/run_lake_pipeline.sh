@@ -39,21 +39,31 @@ LAT="${2:?Usage: run_lake_pipeline.sh SITE LAT LON [NLOOP_SPINUP]}"
 LON="${3:?Usage: run_lake_pipeline.sh SITE LAT LON [NLOOP_SPINUP]}"
 NLOOP_SPINUP="${4:-8}"
 
-# All four of these can be overridden from the environment, so the same lake
-# can be re-run against a different ecLand build without disturbing the
-# baseline results already in output/ and output_spunup/ (see README,
-# "Re-running against a different ecLand build"). Defaults reproduce the
+# All of these can be overridden from the environment, so the same lake can be
+# re-run against a different ecLand build, or a different physiography, without
+# disturbing the baseline results already in output/ and output_spunup/ (see
+# README, "Re-running against a different ecLand build"). Defaults reproduce the
 # original, as-recorded configuration.
 ECLAND_MASTER_DP="${ECLAND_MASTER_DP:-/perm/pad/ecland/build/bin/ecland-master-dp}"
 
 FORCING_DIR="${REPO_ROOT}/forcing/CCI_LAKES"
-CLIM_DIR="${REPO_ROOT}/clim/CCI_LAKES"
+# CLIM_DIR holds the surfclim/surfinit pair the spin-up starts from; point it
+# at a variant tree (scripts/set_lake_subsurface.py) to run the same lake with
+# a different physiography. The namelist generator still reads site metadata
+# (lat/lon, reference heights, forcing length) from clim/CCI_LAKES, which no
+# physiography variant changes.
+CLIM_DIR="${CLIM_DIR:-${REPO_ROOT}/clim/CCI_LAKES}"
 CLIM_SPUNUP_DIR="${CLIM_SPUNUP_DIR:-${REPO_ROOT}/clim/CCI_LAKES_spunup}"
 OUTPUT_DIR="${OUTPUT_DIR:-${REPO_ROOT}/output}"
 OUTPUT_SPUNUP_DIR="${OUTPUT_SPUNUP_DIR:-${REPO_ROOT}/output_spunup}"
 # ecland_run_model.sh keys its scratch on <WORK_DIR>/RUN/<STA>, so two builds
 # running the same lake at the same time must not share one.
 WORK_DIR="${WORK_DIR:-${REPO_ROOT}/scripts/work}"
+# The control namelist the per-site namelists are generated from. Override it
+# to test a build-specific physics setting; note that a namelist naming a
+# variable a given binary does not know will abort that binary's read, so a
+# variant is only usable with the build it was written for.
+NAMELIST_CTL="${NAMELIST_CTL:-${REPO_ROOT}/namelists/namelist_ecland_lake_ctl}"
 
 echo "=== ${SITE} (${LAT}, ${LON}) ==="
 
@@ -95,7 +105,7 @@ model_run_modules() {
 generate_namelist() {
   local sta="$1"
   python3 "${SCRIPT_DIR}/ecland_create_namelist.py" \
-    -g CCI_LAKES -n "${REPO_ROOT}/namelists/namelist_ecland_lake_ctl" \
+    -g CCI_LAKES -n "${NAMELIST_CTL}" \
     -s "${sta}" -d "${REPO_ROOT}" -w "${OUTPUT_DIR}" -t ecfs
   # Generator computes nforcing-2, one short of the permitted nforcing-1:
   # NSTOP counts integration steps, and the forcing file carries one more

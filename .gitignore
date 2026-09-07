@@ -6,6 +6,11 @@ output/*
 # output_spunup/ etc.: an ad-hoc comparison output dir alongside output/,
 # same convention as output/ itself -- not checked in.
 output_spunup/
+# retest/<variant>/: one run tree per non-default ecLand build (see README,
+# "Re-running against a different ecLand build"). The driver, lake list and
+# any source patches under retest/ are checked in; the run trees are not.
+retest/*/
+!retest/patches/
 postprocessed/
 benchmark/models/
 results/
