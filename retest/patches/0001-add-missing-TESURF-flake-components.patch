@@ -1,0 +1,17 @@
+diff --git a/src/surf/module/yos_nampars1.F90 b/src/surf/module/yos_nampars1.F90
+index a509281..c1611e7 100644
+--- a/src/surf/module/yos_nampars1.F90
++++ b/src/surf/module/yos_nampars1.F90
+@@ -222,6 +222,12 @@ TYPE :: TESURF
+     !  Parameters used in flakeen flakerad module
+     REAL(KIND=JPRD) :: RDEPTH_W_MAX
+     REAL(KIND=JPRD) :: RDEPTH_W_MIN
++    REAL(KIND=JPRD) :: RDEPTH_W_MIX_IW
++    REAL(KIND=JPRD) :: TMNW_NDG_TIMESCL
++    REAL(KIND=JPRD) :: TMNW_NDG_RDSCL
++    LOGICAL         :: LFLAKE_BOTSED
++    REAL(KIND=JPRD) :: RDEPTH_BOTSED
++    REAL(KIND=JPRD) :: RPHI_BOTSED_PR0
+     REAL(KIND=JPRD) :: RD_C_T_DT_MAX_A
+     REAL(KIND=JPRD) :: RC_I_FLK_A
+     REAL(KIND=JPRD) :: RH_ICE_FUSION_A
