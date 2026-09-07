@@ -23,9 +23,9 @@
 #
 # Needs both the create_forcing extraction module set (for merge/namelist)
 # and the model-run module set (for the two ecland_run_model.sh calls) --
-# these conflict (see ecland-portal's README), so this script switches
-# between them itself rather than assuming the caller's shell has either
-# loaded already.
+# these pin conflicting python3 versions, so this script switches between
+# them itself rather than assuming the caller's shell has either loaded
+# already.
 #
 # (C) Copyright 2026- ECMWF. Apache Licence Version 2.0.
 
@@ -39,13 +39,21 @@ LAT="${2:?Usage: run_lake_pipeline.sh SITE LAT LON [NLOOP_SPINUP]}"
 LON="${3:?Usage: run_lake_pipeline.sh SITE LAT LON [NLOOP_SPINUP]}"
 NLOOP_SPINUP="${4:-8}"
 
-ECLAND_MASTER_DP=/perm/pad/ecland/build/bin/ecland-master-dp
+# All four of these can be overridden from the environment, so the same lake
+# can be re-run against a different ecLand build without disturbing the
+# baseline results already in output/ and output_spunup/ (see README,
+# "Re-running against a different ecLand build"). Defaults reproduce the
+# original, as-recorded configuration.
+ECLAND_MASTER_DP="${ECLAND_MASTER_DP:-/perm/pad/ecland/build/bin/ecland-master-dp}"
 
 FORCING_DIR="${REPO_ROOT}/forcing/CCI_LAKES"
 CLIM_DIR="${REPO_ROOT}/clim/CCI_LAKES"
-CLIM_SPUNUP_DIR="${REPO_ROOT}/clim/CCI_LAKES_spunup"
-OUTPUT_DIR="${REPO_ROOT}/output"
-OUTPUT_SPUNUP_DIR="${REPO_ROOT}/output_spunup"
+CLIM_SPUNUP_DIR="${CLIM_SPUNUP_DIR:-${REPO_ROOT}/clim/CCI_LAKES_spunup}"
+OUTPUT_DIR="${OUTPUT_DIR:-${REPO_ROOT}/output}"
+OUTPUT_SPUNUP_DIR="${OUTPUT_SPUNUP_DIR:-${REPO_ROOT}/output_spunup}"
+# ecland_run_model.sh keys its scratch on <WORK_DIR>/RUN/<STA>, so two builds
+# running the same lake at the same time must not share one.
+WORK_DIR="${WORK_DIR:-${REPO_ROOT}/scripts/work}"
 
 echo "=== ${SITE} (${LAT}, ${LON}) ==="
 
@@ -89,8 +97,10 @@ generate_namelist() {
   python3 "${SCRIPT_DIR}/ecland_create_namelist.py" \
     -g CCI_LAKES -n "${REPO_ROOT}/namelists/namelist_ecland_lake_ctl" \
     -s "${sta}" -d "${REPO_ROOT}" -w "${OUTPUT_DIR}" -t ecfs
-  # Generator computes nforcing-2, one short of the permitted nforcing-1 --
-  # see ecland-portal's README, "The simulated period, and NSTOP".
+  # Generator computes nforcing-2, one short of the permitted nforcing-1:
+  # NSTOP counts integration steps, and the forcing file carries one more
+  # instant than that (the trailing boundary value needed to drive the last
+  # step), so the correct value is nforcing-1.
   local nl="${OUTPUT_DIR}/namelist_${sta}"
   local nforcing nstop_wrong nstop_right
   nforcing=$(grep -oP 'NDFORC=\K[0-9]+' "${nl}")
@@ -111,11 +121,11 @@ model_run_modules
 export DR_HOOK_ASSERT_MPI_INITIALIZED=0
 export ECLAND_MASTER="${ECLAND_MASTER_DP}"
 source "${SCRIPT_DIR}/ecland_runtime.sh"
-mkdir -p "${OUTPUT_DIR}" "${REPO_ROOT}/scripts/work"
+mkdir -p "${OUTPUT_DIR}" "${WORK_DIR}"
 rm -rf "${OUTPUT_DIR}/${SITE}_2017-2017"
 bash "${SCRIPT_DIR}/ecland_run_model.sh" \
   -s "${SITE}_2017-2017" -b "${ECLAND_MASTER_DP}" \
-  -w "${REPO_ROOT}/scripts/work" -o "${OUTPUT_DIR}" \
+  -w "${WORK_DIR}" -o "${OUTPUT_DIR}" \
   -f "${FORCING_DIR}" -i "${CLIM_DIR}" -F ecfs \
   -n "${OUTPUT_DIR}/namelist_${SITE}_2017-2017" -l "${NLOOP_SPINUP}" -R false
 
@@ -135,7 +145,7 @@ export ECLAND_MASTER="${ECLAND_MASTER_DP}"
 rm -rf "${OUTPUT_SPUNUP_DIR}/${SITE}_2017-2022"
 bash "${SCRIPT_DIR}/ecland_run_model.sh" \
   -s "${SITE}_2017-2022" -b "${ECLAND_MASTER_DP}" \
-  -w "${REPO_ROOT}/scripts/work" -o "${OUTPUT_SPUNUP_DIR}" \
+  -w "${WORK_DIR}" -o "${OUTPUT_SPUNUP_DIR}" \
   -f "${FORCING_DIR}" -i "${CLIM_SPUNUP_DIR}" -F ecfs \
   -n "${OUTPUT_DIR}/namelist_${SITE}_2017-2022" -l 1 -R false
 

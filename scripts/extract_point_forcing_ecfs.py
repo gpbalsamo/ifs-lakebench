@@ -14,10 +14,8 @@ model's NAMFORC reader already know how to consume.
 WHAT THIS DOES NOT DO, DELIBERATELY: land-sea masking. The upstream tool's own
 osm_pyutils/process_site_var.py always masks to the nearest LAND gridpoint
 (lsm >= 0.5) before extraction -- wrong for a lake point, where the forcing
-wanted is the one AT the location. ../ecland-portal's README documents this
-exact "land-point trap" and patches around it for which_surface != land; this
-script takes the same approach by simply never applying the mask, rather than
-reproducing the patched copy.
+wanted is the one AT the location, not the nearest land point. This script
+avoids that "land-point trap" by simply never applying the mask.
 
 Each daily archive spans a 25-hour window (a message valid at that day's
 00:00, carried over from the previous day's 12Z run, through 24 hourly steps
@@ -78,8 +76,10 @@ Usage:
       --lat LAT --lon LON --out OUTPUT.nc [--work-dir DIR] [--keep-work-dir]
 
 Needs the create_forcing extraction module set (ecmwf-toolbox, python3/new,
-metview-python) -- NOT the model-run set; see ecland-portal's README on why
-the two conflict. Also needs `cdo` for the final per-variable merge.
+metview-python) -- NOT the model-run set (prgenv/intel intel/2021.4
+python3/3.10.10-01 hpcx-openmpi/2.9 netcdf4/4.9.1): the two sets pin
+conflicting python3 versions, so `module load` fails if both are requested
+together. Also needs `cdo` for the final per-variable merge.
 
 (C) Copyright 2026- ECMWF. Apache Licence Version 2.0.
 """

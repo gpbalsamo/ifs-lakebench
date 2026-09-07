@@ -1,6 +1,6 @@
 # ifs-lakebench
 
-Scripts and configuration to run [ecLand](https://www.ecmwf.int/en/research/modelling-systems/land-surface) (specifically its [FLake](https://www.flake.igb-berlin.de/) lake scheme) offline, single-point, over an arbitrary set of lakes worldwide, and to benchmark the result against observations. It builds a per-lake pipeline — physiography, forcing, spin-up, scored run, post-processing — the same way `plumber2-ecland` and `fluxnet-shuttle-ecland` do for flux-tower sites, but for lake points instead.
+Scripts and configuration to run [ecLand](https://www.ecmwf.int/en/research/modelling-systems/land-surface) (specifically its [FLake](https://www.flake.igb-berlin.de/) lake scheme) offline, single-point, over an arbitrary set of lakes worldwide, and to benchmark the result against observations. It is a self-contained per-lake pipeline: physiography, forcing, spin-up, scored run, post-processing.
 
 The motivating use case so far, and the one driving the choice of observational product, is the [ESA Climate Change Initiative Lakes](https://climate.esa.int/en/projects/lakes/) (CCI Lakes) project — but nothing about the pipeline itself is CCI-Lakes-specific: any lake with a lat/lon and a physiography source can go through it, scored against whichever observational product fits.
 
@@ -9,42 +9,22 @@ Seven lakes now have a complete, spun-up 2017-2022 simulation: **Lake Ladoga** (
 ## Setup
 
 ```bash
-cd $PERM   # or wherever you keep sibling ECMWF repos side by side
 git clone git@github.com:gpbalsamo/ifs-lakebench.git
 ```
 
-This repo expects to sit **next to** two siblings it reuses rather than reimplements — clone them alongside it if you don't already have them:
+Everything needed to run and re-run the pipeline lives in this repo: the model-run and namelist-generation scripts (`scripts/ecland_run_experiment.sh`, `ecland_run_model.sh`, `ecland_runtime.sh`, `ecland_create_namelist.py`) and the control namelist (`namelists/namelist_ecland_lake_ctl`) are vendored here, unmodified and already generic over site group and forcing type — nothing needs to be checked out alongside it.
 
-```bash
-git clone git@github.com:gpbalsamo/plumber2-ecland.git
-```
+Two things do come from outside the repo, because they're ECMWF-HPC environment prerequisites rather than sibling code: a compiled double-precision `ecland-master-dp` build (see [Known issues](#known-issues) — a single-precision `ecland-master` silently produces wrong, frozen output), and, for the forcing-extraction step, the `create_forcing` Python module that ships with the `ecland` model source tree (`/perm/pad/ecland/tools/create_forcing`) — `scripts/extract_point_forcing_ecfs.py` imports its `create_sites.create_forcing()` directly rather than reimplementing point extraction. Module sets for extraction vs. model runs differ and must not be merged — see step 3 of [Quick start](#quick-start) and step 4 for which set each stage needs.
 
-`../ecland-portal` ("ecLand Anywhere") is currently a local-only repo with no remote configured — it isn't `git clone`-able yet. Get a copy from whoever holds it (or push it to a remote first) before running the physiography step in [Quick start](#quick-start).
-
-See [Relationship to sibling repos](#relationship-to-sibling-repos) below for what each contributes, and [Known issues](#known-issues) for the one thing every run needs regardless of lake: a double-precision `ecland-master-dp` build (a single-precision `ecland-master` silently produces wrong, frozen output). Module sets for extraction vs. model runs differ and must not be merged — see step 3 of [Quick start](#quick-start) and step 4 for which set each stage needs.
-
-Nothing under `forcing/`, `clim/`, `output/` etc. is in Git (they're generated data, often TBs of it) — see [Repository layout](#repository-layout) for what lives where and [Quick start](#quick-start) to (re)generate it for a lake.
-
-## Relationship to sibling repos
-
-This repo does not re-derive the ecLand run/namelist machinery; it reuses it.
-
-| Repo | What it contributes here |
-|---|---|
-| [`../plumber2-ecland`](../plumber2-ecland) | Source of `scripts/ecland_run_experiment.sh`, `ecland_run_model.sh`, `ecland_runtime.sh` and `ecland_create_namelist.py`, vendored into `scripts/` unmodified (they are already generic over site group and forcing type — nothing here is PLUMBER2-specific). Also the source namelist for `namelists/namelist_ecland_lake_ctl`. |
-| [`../ecland-portal`](../ecland-portal) ("ecLand Anywhere") | Produces the physiography (`surfclim`/`surfinit`) for an arbitrary lat/lon — including `which_surface: lake`, which forces 100% lake fraction so FLake actually runs. `scripts/stage_portal_job.sh` imports one of its job directories into this repo's layout. |
-
-Unlike the two flux-tower repos (`plumber2-ecland`'s 170 PLUMBER2 sites, `fluxnet-shuttle-ecland`'s 775 FLUXNET sites), there is no in-situ forcing or observation dataset to pull from Git LFS here: physiography comes from an ecland-portal extraction, forcing from ECFS (see below), and the evaluation data is a satellite product (CCI-Lakes), not a flux tower.
-
-**Forcing does *not* come from ecland-portal's own MARS retrieval.** That path (`run_forcing: true`, whole-month MARS requests) runs at roughly 1 hour of wall clock per month spanned, which made a 6-year pull impractical — the first attempt (job `20260904T111326_Ld-001`) was cancelled after 51 minutes, still in its first month. ECFS already holds the same `class od stream oper expver 1` fields as daily global GRIB tarballs going back to at least 2016, at `/paga/OSM_FORCING/forcing_od_1_oper_1_<YYYYMMDD>.tar.gz` (~2.1 GB/day for 2017 onward). `scripts/get_forcing_ecfs.sh` pulls those with `ecp` instead, skipping MARS entirely, and `scripts/extract_point_forcing_ecfs.py` turns the raw global GRIB into ecLand-ready, point-extracted forcing.
-
-`../ecland-portal` has since grown its own `use_forcing_archive` request option pointing at this same `forcing/raw/` archive and this same extractor script (see its `config/defaults.yaml`'s `forcing_archive` block) — so a portal job *can* read from the archive natively. It is not used for the multi-year runs in this repo, though: the orchestrator's per-job wall-clock budget defaults to 90 minutes (`GET /healthz`'s `time_limit`), far short of what even a single year's extraction needs (~7-8h), so a portal request spanning more than a few days would simply time out. This repo keeps forcing extraction as its own directly-submitted, per-year SLURM jobs (see step 3) for that reason — only physiography goes through the portal.
+Nothing under `forcing/`, `clim/`, `output/` etc. is in Git (they're generated data, often TBs of it) — see [Repository layout](#repository-layout) for what lives where and [Quick start](#quick-start) to (re)generate it for a lake. Physiography (`surfclim`/`surfinit` NetCDF) for a lake point is also generated outside this repo — see step 2 of [Quick start](#quick-start) for the file format it needs to match and one tool (`ecland-portal`, "ecLand Anywhere") that produces it; any source that produces the same schema works, `scripts/stage_portal_job.sh` is just a convenience importer for that one tool's job output layout.
 
 ## Current status
 
-`sites/lakes.csv` has one row per lake with a complete pipeline run — as of now, all seven attempted so far (Ladoga plus the six from `sites/candidate_lakes.csv`, which is currently empty pending the next batch). Benchmark period for all lakes: **2017-2022** (6 full calendar years); forcing is fetched through 2023-01-01 00:00 since ecLand needs that instant as the boundary driving the last timestep of 2022 (see `../ecland-portal`'s README, "The simulated period, and NSTOP").
+Forcing is pulled from ECFS's pre-archived daily global `oper` GRIB tarballs (`/paga/OSM_FORCING/forcing_od_1_oper_1_<YYYYMMDD>.tar.gz`, ~2.1 GB/day for 2017 onward, going back to at least 2016) rather than a fresh MARS retrieval, which runs at roughly 1 hour of wall clock per calendar month spanned — impractical for a multi-year pull (a first attempt at a 6-year MARS pull was cancelled after 51 minutes, still in its first month). `scripts/get_forcing_ecfs.sh` pulls the tarballs with `ecp`, and `scripts/extract_point_forcing_ecfs.py` turns the raw global GRIB into ecLand-ready, point-extracted forcing.
 
-Every lake went through the same four stages — physiography via ecland-portal, per-year forcing extraction against the shared raw ECFS archive (no new download needed per lake), merge, then spin-up + scored run — now wrapped in one script, `scripts/run_lake_pipeline.sh SITE LAT LON [NLOOP]`, once physiography and forcing are staged. **Post-processing and benchmarking**: not started — see [Open work](#open-work).
+`sites/lakes.csv` has one row per lake with a complete pipeline run — as of now, all seven attempted so far (Ladoga plus the six from `sites/candidate_lakes.csv`, which is currently empty pending the next batch). Benchmark period for all lakes: **2017-2022** (6 full calendar years); forcing is fetched through 2023-01-01 00:00 because ecLand needs that instant as the boundary driving the last timestep of 2022 — the forcing file must extend one step past the last integrated instant, so a run ending 2022-12-31 23:00 needs forcing through 2023-01-01 00:00.
+
+Every lake went through the same four stages — physiography staged for the point, per-year forcing extraction against the shared raw ECFS archive (no new download needed per lake), merge, then spin-up + scored run — now wrapped in one script, `scripts/run_lake_pipeline.sh SITE LAT LON [NLOOP]`, once physiography and forcing are staged. **Post-processing and benchmarking**: not started — see [Open work](#open-work).
 
 **Read [Spin-up doesn't always converge the same way](#spin-up-doesnt-always-converge-the-same-way) before running a new lake** — the default `NLOOP=8` was silently wrong for one of the six candidates.
 
@@ -110,13 +90,15 @@ sbatch --export=ALL,START_DATE=20170101,END_DATE=20230101 scripts/get_forcing_ec
 
 Defaults to `$SCRATCH/ifs-lakebench/forcing/raw/`, concurrency 8 (tested: faster than serial, but 16 was *slower* than 8 — ECFS/tape access seems to throttle somewhere around there). Safe to re-run or resume: `ecp`'s default `-n` behaviour skips a destination file that already exists.
 
-### 2. Stage a lake's ecland-portal (physiography) job
+### 2. Stage a lake's physiography
+
+A lake point needs `surfclim`/`surfinit` NetCDF files with 100% lake fraction (`CLAKE = 1.0`, `landsea = 0.0`) so FLake actually runs at that point, rather than the land fraction a generic land-surface extraction would give it. `scripts/stage_portal_job.sh` imports these (and whatever else was produced) from one particular external generator's job output layout — `ecland-portal` ("ecLand Anywhere"), which writes each job to `$PERM/ecland_portal_jobs/<job_id>/`:
 
 ```bash
 scripts/stage_portal_job.sh 20260904T120600_Ld-001 --years 2017-2022
 ```
 
-Copies whatever the job has produced — `clim/CCI_LAKES/`, `forcing/CCI_LAKES/` (only relevant for a job that still uses ecland-portal's own MARS forcing step), and, if the portal ran further steps, the generated namelist, model output and landgram figure under `output/<STA>__portal_<job_id>/` — and records `request.json`/`forcing_config.yaml`/`physiography_config.yaml` under `sites/provenance/<job_id>/`. Safe to re-run; it skips files already staged unless `--force` is given. Add `--link` to symlink instead of copy, or `--years Y1-Y2` to relabel filenames whose `<Y1>-<Y2>` suffix reflects a placeholder end_date rather than the actual benchmark period (create_forcing names files by the literal year digits of `--endDate`, not by what the run is meant to represent).
+Copies whatever the job has produced — `clim/CCI_LAKES/`, `forcing/CCI_LAKES/` (only relevant for a job that used its own MARS forcing step), and, if it ran further steps, the generated namelist, model output and landgram figure under `output/<STA>__portal_<job_id>/` — and records `request.json`/`forcing_config.yaml`/`physiography_config.yaml` under `sites/provenance/<job_id>/`. Safe to re-run; it skips files already staged unless `--force` is given. Add `--link` to symlink instead of copy, or `--years Y1-Y2` to relabel filenames whose `<Y1>-<Y2>` suffix reflects a placeholder end_date rather than the actual benchmark period (create_forcing names files by the literal year digits of `--endDate`, not by what the run is meant to represent). Any other source of `surfclim`/`surfinit` NetCDF matching this schema can be dropped into `clim/CCI_LAKES/` directly instead — `stage_portal_job.sh` is a convenience, not a requirement.
 
 ### 3. Turn the raw GRIB into ecLand-ready forcing
 
@@ -161,7 +143,7 @@ python3 scripts/ecland_create_namelist.py \
   -s Ld-001_2017-2022 -d . -w output -t ecfs
 ```
 
-**Fix `NSTOP` by hand before running** — the generator computes `nforcing - 2`, one short of the permitted maximum `nforcing - 1` (see `../ecland-portal`'s README, "The simulated period, and NSTOP" — the same off-by-one plumber2-ecland's copy of this script has).
+**Fix `NSTOP` by hand before running** — the generator computes `NSTOP = nforcing - 2`, one short of the permitted maximum `nforcing - 1`: `NSTOP` counts integration steps, and the forcing file carries one more instant than that (the trailing boundary value needed to drive the last step), so the correct value is `nforcing - 1`. `scripts/run_lake_pipeline.sh` applies this fix automatically; done by hand elsewhere.
 
 **4a. Spin up** on one representative year (2017), looped until the end-of-year lake state stops changing:
 
