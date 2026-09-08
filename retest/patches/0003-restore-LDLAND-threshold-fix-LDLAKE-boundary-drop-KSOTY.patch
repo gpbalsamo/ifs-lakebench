@@ -1,15 +1,21 @@
 diff --git a/src/surf/module/surfbc_ctl_mod.F90 b/src/surf/module/surfbc_ctl_mod.F90
-index 3e059e2..0188094 100644
+index 3e059e2..a30ac96 100644
 --- a/src/surf/module/surfbc_ctl_mod.F90
 +++ b/src/surf/module/surfbc_ctl_mod.F90
-@@ -276,14 +276,11 @@ ENDDO
+@@ -276,14 +276,17 @@ ENDDO
  
  !         Miscellaneous fields needed elsewhere
  DO JL=KIDIA,KFDIA
 -  LDLAND(JL)=PLSM(JL) > 0.01_JPRB
 -  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. (PCLAKE(JL) > (1.0_JPRB-PLSM(JL)/2.0_JPRB)))  !all land points and dominant lakes are going in the lake calculations
 +  LDLAND(JL)=PLSM(JL) > 0.5_JPRB
-+  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. (PCLAKE(JL) >= (1.0_JPRB-PLSM(JL)/2.0_JPRB)))  !all land points and resolved lakes are going in the lake calculations
++! The lake threshold interpolates between 0.5 at PLSM=1 and 1.0 at PLSM=0, so
++! at a water point it is an equality test against CLAKE=1.0. The 1.E-6 keeps
++! a fully resolved lake on the lake side of it when the physiography stores
++! that 1.0 through single precision (0.99999994), which would otherwise switch
++! FLake off at exactly the points it is meant to run at.
++  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. &
++   & (PCLAKE(JL) >= (1.0_JPRB-PLSM(JL)/2.0_JPRB)-1.0E-6_JPRB))  !all land points and resolved lakes are going in the lake calculations
    LDSICE(JL)=(PCI(JL) > RCIMIN).AND.(.NOT. LDLAND(JL)).AND.(.NOT. LDLAKE(JL))  ! FOR SEAMLESS TREATMENT OF ICE OVER WATER
    LDLICE(JL)=((PCIL(JL) > RCIMIN).AND.(LDLAND(JL)))  ! FOR SEAMLESS TREATMENT OF ICE OVER LAND
    LDNH(JL)=PGEMU(JL) > 0.0_JPRB
