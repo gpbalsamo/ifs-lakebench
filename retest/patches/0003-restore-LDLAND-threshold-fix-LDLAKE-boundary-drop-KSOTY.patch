@@ -1,5 +1,5 @@
 diff --git a/src/surf/module/surfbc_ctl_mod.F90 b/src/surf/module/surfbc_ctl_mod.F90
-index 3e059e2..49b6a0f 100644
+index 3e059e2..0188094 100644
 --- a/src/surf/module/surfbc_ctl_mod.F90
 +++ b/src/surf/module/surfbc_ctl_mod.F90
 @@ -276,14 +276,11 @@ ENDDO
@@ -9,7 +9,7 @@ index 3e059e2..49b6a0f 100644
 -  LDLAND(JL)=PLSM(JL) > 0.01_JPRB
 -  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. (PCLAKE(JL) > (1.0_JPRB-PLSM(JL)/2.0_JPRB)))  !all land points and dominant lakes are going in the lake calculations
 +  LDLAND(JL)=PLSM(JL) > 0.5_JPRB
-+  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. (PCLAKE(JL) > 0.5_JPRB))  !all land points and resolved lakes are going in the lake calculations
++  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. (PCLAKE(JL) >= (1.0_JPRB-PLSM(JL)/2.0_JPRB)))  !all land points and resolved lakes are going in the lake calculations
    LDSICE(JL)=(PCI(JL) > RCIMIN).AND.(.NOT. LDLAND(JL)).AND.(.NOT. LDLAKE(JL))  ! FOR SEAMLESS TREATMENT OF ICE OVER WATER
    LDLICE(JL)=((PCIL(JL) > RCIMIN).AND.(LDLAND(JL)))  ! FOR SEAMLESS TREATMENT OF ICE OVER LAND
    LDNH(JL)=PGEMU(JL) > 0.0_JPRB

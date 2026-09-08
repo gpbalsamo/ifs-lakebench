@@ -278,7 +278,7 @@ hit:
    the index afterwards does not fill them -- it only moves `surfrad_ctl_mod`
    into the branch that reads them. With a soil texture properly defined below
    the lake the block never fires at all. It is dropped in
-   `retest/patches/0003-restore-thresholds-and-drop-KSOTY-override.patch`, and
+   `retest/patches/0003-restore-LDLAND-threshold-fix-LDLAKE-boundary-drop-KSOTY.patch`, and
    the effect is exactly what that reasoning predicts: on the portal's original
    `sotype = 0` physiography the run stops crashing and completes -- and
    reproduces finding 4's runaway to the digit, 368.313 K, with `SoilTemp[1]`
@@ -315,7 +315,7 @@ fractional -- it makes any point with more than 1 % land a *full* land column,
 where before it was 100 % water. Our lakes have `landsea` exactly 0 or 1, so
 none of this shows up in the results above; a coastal or lake-margin point
 would see it. **Reverted** in
-`retest/patches/0003-restore-thresholds-and-drop-KSOTY-override.patch`, together with
+`retest/patches/0003-restore-LDLAND-threshold-fix-LDLAKE-boundary-drop-KSOTY.patch`, together with
 the `LDLAKE` line: `CLAKE` alone already separates the two water cases --
 `PLSM = 0, CLAKE = 0` is ocean or sea, `PLSM = 0, CLAKE = 1` a fully-resolved
 lake -- so the base's `CLAKE > 0.5` is both sufficient and the only form that
