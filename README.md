@@ -521,6 +521,47 @@ as the reference -- nothing in this retest changes them. With
 (bit-identical to the control) and not for shallower ones. Run trees, logs and
 patches are under `retest/`.
 
+### Urban tile water balance (2026-09-09)
+
+The same harness found and fixed a second, unrelated ecLand bug, so the recipe
+is recorded here even though it has nothing to do with lakes.
+
+`surftstp_ctl_mod.F90` removes 30 % of the throughfall over the urban tile as an
+estimate of storm drainage, but never adds it to a runoff term. The water leaves
+the column without appearing anywhere, and since `BUDGET_MASS_DDH` counts all
+precipitation as input --
+`ZFLUX = PRSFC+PRSFL+PSSFC+PSSFL-PROFS-PROFD+ZEVAP` -- the intercepted fraction
+lands directly in the residual. The residual is therefore exactly
+`0.3*PFRTI(:,10)*throughfall`, which is what made it diagnosable rather than
+merely visible.
+
+To reproduce: take a physiography variant with `cu > 0` (the runs below used
+`retest/clim_subsurface/`'s Chilwa point with `cu = 0.5` and `CLAKE = 0`, i.e. a
+land point with no lake) and run it with
+`namelists/namelist_ecland_urban_wbcheck`, which differs from the lake control
+namelist only in `LEURBAN` on, `LEWBCHECK` on (report, not abort) and `LEFLAKE`
+off. Note `LEURBAN` defaults to `.TRUE.` (`su0phy1s.F90:137`), so any site with
+urban cover has been exercising this.
+
+Closure against the check's 2.2e-13 threshold, before and after the fix:
+
+| site | urban cover | steps with a residual, before | after |
+| --- | --- | --- | --- |
+| Chilwa point, synthetic | `cu = 0.5` | 200 of 240 | **0** |
+| FR-Gri (PLUMBER2) | `cu = 0.0778` | 20 of 480 | **0** |
+
+The fix is bookkeeping only, and demonstrably so: control against fixed at
+FR-Gri, the whole of `o_gg.nc` is bit-identical and in `o_wat.nc` exactly one
+variable moves -- `Qsb`, mean -8.770e-07 -> -9.855e-07 -- with `Rainf`, `Evap`,
+`Qs`, `Qsm`, `DelSoilMoist`, `DelSWE` and `Intercept` unchanged. The water had
+already left the column; it simply was not reported.
+
+Fixed upstream in `gpbalsamo/ecland` `develop` as `2922939`. Note that no ecLand
+test checks closure -- `LEWBCHECK` is `.FALSE.` in every test namelist -- so CI
+can confirm the fix breaks nothing but cannot confirm what it fixes. A test site
+with `cu > 0` and `LEWBCHECK=.TRUE.` would guard it; FR-Gri already has the
+cover for that.
+
 ## Known issues
 
 **The ecland-master binary you pick matters more than anything in the namelist, and picking the wrong one fails silently.** Confirmed 2026-09-04 on the 10-day Ladoga smoke test: `/perm/pad/ecland-build/bin/ecland-master` (single-precision) runs to completion, writes all expected output files, and reports no error — but every FLake variable in `o_gg.nc` (`AvgSurfT`, `TLMNW`, `TLWML`, `TLBOT`, `HLICE`, `HLML`) jumps to a constant default (288.15 K / 50 m) after the *first* timestep and never moves again, for the entire run. `/perm/pad/ecland/build/bin/ecland-master-dp` (double-precision), run against the byte-identical namelist, forcing and physiography, instead produces a physically evolving lake state (cooling, then freezing, in a January cold snap) — matching an independent reference run (ecland-portal job `20260904T145308_Ld-004`, MARS-forced, 1 day) exactly on the overlapping period. **Use `ecland-master-dp`.** The single-precision build is not merely lower-precision here; something in it silently drops FLake to a fallback state.
