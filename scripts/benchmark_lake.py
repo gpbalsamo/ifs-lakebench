@@ -1,36 +1,271 @@
 #!/usr/bin/env python3
-"""Score post-processed ecLand lake output against ESA-CCI-Lakes observations.
+"""Score postprocessed ecLand lake output against ESA-CCI-Lakes LSWT observations.
 
-STATUS: stub. No ESA-CCI-Lakes observational product is available locally yet
-(searched under $PERM for anything CCI-Lakes-shaped; found nothing). Sourcing
-it -- most likely the CCI Lakes lake surface water temperature (LSWT) product,
-possibly also ice cover/duration -- is a prerequisite for this script and is
-not part of this initial scaffold.
+For each lake in sites/lakes.csv with a completed run and a known CCI Lakes id
+(the cci_lake_id column), compares the model's daily-mean lake temperature
+against the daily-mean, quality-filtered (flags 4-5, "daily45") CCI Lakes
+lake-surface-water-temperature (LSWT) product, spatially averaged over the
+lake's CCI bounding box (the model is single-point; the obs product is
+gridded over the whole lake, so a spatial mean is the only fair match for a
+single representative point). Two model variables are scored against the
+same obs: TLWML (FLake's mixed-layer temperature, documented in
+namelists/namelist_ecland_lake_ctl's header as the LSWT proxy to use) and
+AvgSurfT (the skin temperature, closer to what a thermal-IR retrieval
+actually senses) -- reported side by side rather than picking one, since
+which is the better proxy is itself an open question this benchmark can help
+answer.
 
-Modelled on plumber2-ecland/scripts/benchmark_plumber2.py, which scores
-against PLUMBER2's flux observations and renders a self-contained HTML
-dashboard (scripts/dashboard_template.html) with bias/RMSE/R/NME, a site map
-and a per-site drill-down. Once obs/ holds real CCI-Lakes data and
-postproc_lake.py produces real per-lake output, this should follow the same
-shape: one row per lake in sites/lakes.csv, one score per variable, one
-dashboard under benchmark/dashboards/.
+Writes a per-lake/per-variable metrics CSV, a JSON of the aligned daily
+series (for the dashboard), and a self-contained HTML dashboard with one
+time-series plot per lake -- rendered with matplotlib into embedded PNGs
+rather than a JS charting library, so it opens with no network access.
+
+Obs source, confirmed 2026-09-14 from Margarita Choulga's own reader code:
+/ec/res4/hpcperm/pa5/MONTHLY_LAKES/DATA_FOR_PAPER/CLIPPED_INSITU_005deg/
+LAKE<cci_id>_daily45_<period>.nc, period in {1995_2001, 2002_2011, 2012_2024}.
+
+(C) Copyright 2026- ECMWF. Apache Licence Version 2.0.
 """
+from __future__ import annotations
 
 import argparse
+import base64
+import csv
+import io
+import json
+import sys
+from pathlib import Path
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import xarray as xr
+
+DEFAULT_MODEL_DIR = Path('postprocessed')
+DEFAULT_OBS_DIR = Path('/ec/res4/hpcperm/pa5/MONTHLY_LAKES/DATA_FOR_PAPER/CLIPPED_INSITU_005deg')
+DEFAULT_LAKES_CSV = Path('sites/lakes.csv')
+DEFAULT_OUT_DIR = Path('benchmark/dashboards/default')
+
+OBS_PERIODS = ('1995_2001', '2002_2011', '2012_2024')
+MODEL_VARS = ('TLWML', 'AvgSurfT')
+MIN_N = 20  # minimum overlapping daily obs to trust a lake's metrics
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model-dir", required=True, help="e.g. postprocessed/")
-    parser.add_argument("--obs-dir", required=True, help="e.g. obs/")
-    parser.add_argument("--out-dir", required=True, help="e.g. benchmark/dashboards/<run-name>")
-    parser.parse_args()
-    raise NotImplementedError(
-        "benchmark_lake.py is a stub -- needs a sourced ESA-CCI-Lakes "
-        "observational product under obs/ and a working postproc_lake.py "
-        "before this can score anything (see this file's docstring)."
-    )
+def periods_for_range(start: pd.Timestamp, end: pd.Timestamp) -> list[str]:
+    out = []
+    for period in OBS_PERIODS:
+        y0, y1 = (int(y) for y in period.split('_'))
+        if y0 <= end.year and y1 >= start.year:
+            out.append(period)
+    return out
 
 
-if __name__ == "__main__":
-    main()
+def load_obs_daily(obs_dir: Path, cci_id: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.Series:
+    """Daily LSWT (K), spatially averaged over the CCI lake bounding box."""
+    periods = periods_for_range(start, end)
+    if not periods:
+        raise ValueError(f'no CCI obs period overlaps {start.date()}..{end.date()}')
+    pieces = []
+    for period in periods:
+        path = obs_dir / f'LAKE{cci_id}_daily45_{period}.nc'
+        if not path.is_file():
+            print(f'    WARNING: missing obs file {path}')
+            continue
+        with xr.open_dataset(path) as ds:
+            spatial_mean = ds['lswt'].mean(dim=[d for d in ('lat', 'lon') if d in ds['lswt'].dims], skipna=True)
+            pieces.append(spatial_mean.load())
+    if not pieces:
+        raise FileNotFoundError(f'no obs files found for cci_lake_id {cci_id} in {obs_dir}')
+    obs = xr.concat(pieces, dim='time').sortby('time')
+    obs = obs.sel(time=slice(start, end))
+    series = obs.to_series()
+    series.index = series.index.normalize()
+    return series[~series.index.duplicated(keep='first')]
+
+
+def load_model_daily(path: Path) -> tuple[pd.DataFrame, float, float]:
+    # postproc_lake.py writes CF-compliant "seconds since <date>" time units;
+    # xarray decodes these to datetime64 on open (consuming the units attr),
+    # so just use the decoded values directly rather than re-parsing them.
+    with xr.open_dataset(path) as ds:
+        times = pd.DatetimeIndex(ds['time'].values)
+        cols = {v: ds[v].values for v in MODEL_VARS if v in ds}
+        lat = float(ds['latitude'].values)
+        lon = float(ds['longitude'].values)
+    df = pd.DataFrame(cols, index=pd.DatetimeIndex(times, name='time'))
+    return df.resample('1D').mean(), lat, lon
+
+
+def compute_metrics(obs: np.ndarray, mod: np.ndarray) -> dict[str, float | int | None]:
+    n = obs.size
+    if n < MIN_N:
+        return {'n': int(n), 'bias': None, 'rmse': None, 'r': None, 'nme': None}
+    diff = mod - obs
+    obs_anom_abs_sum = np.sum(np.abs(obs - obs.mean()))
+    nme = float(np.sum(np.abs(diff)) / obs_anom_abs_sum) if obs_anom_abs_sum > 0 else None
+    r = float(np.corrcoef(obs, mod)[0, 1]) if np.std(obs) > 0 and np.std(mod) > 0 else None
+    return {
+        'n': int(n),
+        'bias': round(float(diff.mean()), 4),
+        'rmse': round(float(np.sqrt(np.mean(diff ** 2))), 4),
+        'r': round(r, 4) if r is not None else None,
+        'nme': round(nme, 4) if nme is not None else None,
+    }
+
+
+def make_plot_png(site_id: str, lake_name: str, dates: pd.DatetimeIndex,
+                   obs: np.ndarray, model_series: dict[str, np.ndarray]) -> str:
+    fig, ax = plt.subplots(figsize=(11, 3.2), dpi=110)
+    ax.plot(dates, obs - 273.15, '.', color='black', markersize=2, alpha=0.6, label='CCI Lakes LSWT (obs)')
+    colors = {'TLWML': '#1f77b4', 'AvgSurfT': '#d62728'}
+    for name, series in model_series.items():
+        ax.plot(dates, series - 273.15, '-', color=colors.get(name, '#2ca02c'), linewidth=0.9,
+                 label=f'ecLand {name}', alpha=0.85)
+    ax.set_ylabel('Temperature (C)')
+    ax.set_title(f'{site_id}  {lake_name}')
+    ax.legend(loc='upper right', fontsize=8, ncol=3)
+    ax.grid(alpha=0.25)
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png')
+    plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode('ascii')
+
+
+DASHBOARD_HTML_HEAD = """<!doctype html>
+<html><head><meta charset="utf-8"><title>ifs-lakebench benchmark</title>
+<style>
+body{font-family:sans-serif;margin:2em;background:#fafafa;color:#222}
+table{border-collapse:collapse;margin-bottom:2em}
+th,td{border:1px solid #ccc;padding:4px 8px;text-align:right;font-size:13px}
+th{background:#eee}
+td:first-child,th:first-child{text-align:left}
+img{max-width:100%;border:1px solid #ddd;margin-bottom:1.5em}
+h2{margin-top:2.5em}
+.note{color:#666;font-size:13px;max-width:60em}
+</style></head><body>
+<h1>ifs-lakebench: ecLand vs. ESA-CCI-Lakes LSWT</h1>
+<p class="note">Model variables: TLWML (FLake mixed-layer temperature, the documented LSWT proxy)
+and AvgSurfT (skin temperature). Obs: CCI Lakes daily45 (quality flags 4-5), spatially averaged
+over each lake's bounding box. Metrics computed on days where both obs and model have valid values.</p>
+"""
+
+
+def build_dashboard(records: list[dict], out_dir: Path) -> None:
+    html = [DASHBOARD_HTML_HEAD]
+    html.append('<h2>Summary metrics</h2><table><tr><th>Site</th><th>Lake</th><th>Variable</th>'
+                 '<th>N days</th><th>Bias (K)</th><th>RMSE (K)</th><th>r</th><th>NME</th></tr>')
+    for rec in records:
+        for var in MODEL_VARS:
+            m = rec['metrics'].get(var, {})
+            html.append(f"<tr><td>{rec['site_id']}</td><td>{rec['lake_name']}</td><td>{var}</td>"
+                        f"<td>{m.get('n', 0)}</td><td>{m.get('bias', '-')}</td><td>{m.get('rmse', '-')}</td>"
+                        f"<td>{m.get('r', '-')}</td><td>{m.get('nme', '-')}</td></tr>")
+    html.append('</table>')
+    for rec in records:
+        html.append(f"<h2>{rec['site_id']} &mdash; {rec['lake_name']}</h2>")
+        html.append(f'<img src="data:image/png;base64,{rec["plot_png"]}" alt="{rec["site_id"]} time series">')
+    html.append('</body></html>')
+    (out_dir / 'index.html').write_text('\n'.join(html), encoding='utf-8')
+
+
+def read_lakes_csv(path: Path) -> list[dict]:
+    with open(path, newline='') as f:
+        return list(csv.DictReader(f))
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument('--model-dir', type=Path, default=DEFAULT_MODEL_DIR, help='postproc_lake.py output dir')
+    p.add_argument('--obs-dir', type=Path, default=DEFAULT_OBS_DIR, help='CCI Lakes CLIPPED_INSITU_005deg dir')
+    p.add_argument('--lakes-csv', type=Path, default=DEFAULT_LAKES_CSV)
+    p.add_argument('--out-dir', type=Path, default=DEFAULT_OUT_DIR)
+    p.add_argument('--site', action='append', default=None, help='Optional site_id filter; repeatable.')
+    return p.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    out_dir = args.out_dir.expanduser().resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    lakes = [r for r in read_lakes_csv(args.lakes_csv)
+             if r.get('cci_lake_id') and r['status'].startswith('run_complete')]
+    if args.site:
+        wanted = set(args.site)
+        lakes = [r for r in lakes if r['site_id'] in wanted]
+    if not lakes:
+        print('ERROR: no scoreable lakes found (need cci_lake_id + run_complete* status)', file=sys.stderr)
+        return 1
+
+    records = []
+    rows = []
+    for i, lake in enumerate(lakes, 1):
+        site_id = lake['site_id']
+        model_files = sorted(args.model_dir.glob(f'{site_id}_*.nc'))
+        if not model_files:
+            print(f'[{i}/{len(lakes)}] {site_id}: SKIP (no postprocessed file in {args.model_dir})')
+            continue
+        model_path = model_files[-1]
+        print(f'[{i}/{len(lakes)}] {site_id} ({lake["lake_name"]}): {model_path.name}')
+
+        model_df, lat, lon = load_model_daily(model_path)
+        start, end = model_df.index[0], model_df.index[-1]
+        try:
+            obs = load_obs_daily(args.obs_dir, lake['cci_lake_id'], start, end)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f'    SKIP: {exc}')
+            continue
+
+        common = model_df.index.intersection(obs.index)
+        obs_g = obs.loc[common].values
+        metrics = {}
+        model_series_full = {}
+        for var in MODEL_VARS:
+            if var not in model_df:
+                continue
+            mod_g = model_df.loc[common, var].values
+            good = np.isfinite(obs_g) & np.isfinite(mod_g)
+            metrics[var] = compute_metrics(obs_g[good], mod_g[good])
+            model_series_full[var] = model_df[var].reindex(common).values
+            rows.append({'site_id': site_id, 'lake_name': lake['lake_name'], 'variable': var,
+                         **metrics[var]})
+        n_valid = metrics.get('TLWML', {}).get('n', 0)
+        print(f'    {n_valid} overlapping obs/model days'
+              + (f", bias(TLWML)={metrics['TLWML']['bias']} K" if metrics.get('TLWML', {}).get('bias') is not None else ''))
+
+        plot_png = make_plot_png(site_id, lake['lake_name'], common, obs.loc[common].values, model_series_full)
+        records.append({
+            'site_id': site_id, 'lake_name': lake['lake_name'], 'cci_lake_id': lake['cci_lake_id'],
+            'lat': lat, 'lon': lon, 'metrics': metrics, 'plot_png': plot_png,
+        })
+
+    if not records:
+        print('ERROR: nothing scored -- no lake had both a postprocessed file and overlapping obs', file=sys.stderr)
+        return 1
+
+    metrics_csv = out_dir / 'lake_benchmark_metrics.csv'
+    with open(metrics_csv, 'w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=['site_id', 'lake_name', 'variable', 'n', 'bias', 'rmse', 'r', 'nme'],
+                            lineterminator='\n')
+        w.writeheader()
+        w.writerows(rows)
+    print(f'\nWrote {metrics_csv}')
+
+    data_json = out_dir / 'lake_benchmark_data.json'
+    data_json.write_text(json.dumps({
+        'generated': pd.Timestamp.now('UTC').strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'variables': list(MODEL_VARS),
+        'lakes': [{k: v for k, v in r.items() if k != 'plot_png'} for r in records],
+    }, indent=2))
+    print(f'Wrote {data_json}')
+
+    build_dashboard(records, out_dir)
+    print(f'Wrote {out_dir / "index.html"}')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

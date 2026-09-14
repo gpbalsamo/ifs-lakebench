@@ -26,8 +26,9 @@ forcing/*/*
 clim/*/*
 !clim/*/.gitkeep
 
-# ESA-CCI-Lakes observational product -- not sourced yet; once it is, decide
-# then whether it is small enough to check in or needs Git LFS.
+# ESA-CCI-Lakes observational product: benchmark_lake.py reads it directly
+# from its hpcperm location (see README, Benchmark results) rather than
+# staging a copy here, so obs/ stays empty -- kept only for the .gitkeep.
 obs/*
 !obs/.gitkeep
 

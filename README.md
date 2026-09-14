@@ -4,7 +4,7 @@ Scripts and configuration to run [ecLand](https://www.ecmwf.int/en/research/mode
 
 The motivating use case so far, and the one driving the choice of observational product, is the [ESA Climate Change Initiative Lakes](https://climate.esa.int/en/projects/lakes/) (CCI Lakes) project — but nothing about the pipeline itself is CCI-Lakes-specific: any lake with a lat/lon and a physiography source can go through it, scored against whichever observational product fits.
 
-Seven lakes now have a complete, spun-up 2017-2022 simulation: **Lake Ladoga** (`Ld-001`, the starting point) plus six more from `sites/candidate_lakes.csv` — Baringo, Chilwa, Kyoga, Mweru Wantipa, Tana and Victoria. All forced from ECMWF operational analysis. See [Current status](#current-status) and, importantly, [Spin-up doesn't always converge the same way](#spin-up-doesnt-always-converge-the-same-way) before running a new lake.
+Seven lakes now have a complete, spun-up 2017-2022 simulation, post-processed and scored against real observations: **Lake Ladoga** (`Ld-001`, the starting point) plus six more — Baringo, Chilwa, Kyoga, Mweru Wantipa, Tana and Victoria. All forced from ECMWF operational analysis, benchmarked against the ESA CCI Lakes LSWT product. `sites/candidate_lakes.csv` holds 92 more lakes (Margarita Choulga's ESA CCI Lakes list, 2026-09-14) queued for the same pipeline. See [Current status](#current-status), [Benchmark results](#benchmark-results-2026-09-14) and, importantly, [Spin-up doesn't always converge the same way](#spin-up-doesnt-always-converge-the-same-way) before running a new lake.
 
 ## Setup
 
@@ -22,9 +22,9 @@ Nothing under `forcing/`, `clim/`, `output/` etc. is in Git (they're generated d
 
 Forcing is pulled from ECFS's pre-archived daily global `oper` GRIB tarballs (`/paga/OSM_FORCING/forcing_od_1_oper_1_<YYYYMMDD>.tar.gz`, ~2.1 GB/day for 2017 onward, going back to at least 2016) rather than a fresh MARS retrieval, which runs at roughly 1 hour of wall clock per calendar month spanned — impractical for a multi-year pull (a first attempt at a 6-year MARS pull was cancelled after 51 minutes, still in its first month). `scripts/get_forcing_ecfs.sh` pulls the tarballs with `ecp`, and `scripts/extract_point_forcing_ecfs.py` turns the raw global GRIB into ecLand-ready, point-extracted forcing.
 
-`sites/lakes.csv` has one row per lake with a complete pipeline run — as of now, all seven attempted so far (Ladoga plus the six from `sites/candidate_lakes.csv`, which is currently empty pending the next batch). Benchmark period for all lakes: **2017-2022** (6 full calendar years); forcing is fetched through 2023-01-01 00:00 because ecLand needs that instant as the boundary driving the last timestep of 2022 — the forcing file must extend one step past the last integrated instant, so a run ending 2022-12-31 23:00 needs forcing through 2023-01-01 00:00.
+`sites/lakes.csv` has one row per lake with a complete pipeline run — as of now, all seven attempted so far. Each row also carries a `cci_lake_id` (ESA CCI Lakes id), the join key `benchmark_lake.py` uses to find that lake's observations. `sites/candidate_lakes.csv` holds the next 92 lakes to try, from Margarita Choulga's ESA CCI Lakes list (2026-09-14) — see [Repository layout](#repository-layout) for both files' schemas. Benchmark period for all lakes: **2017-2022** (6 full calendar years); forcing is fetched through 2023-01-01 00:00 because ecLand needs that instant as the boundary driving the last timestep of 2022 — the forcing file must extend one step past the last integrated instant, so a run ending 2022-12-31 23:00 needs forcing through 2023-01-01 00:00.
 
-Every lake went through the same four stages — physiography staged for the point, per-year forcing extraction against the shared raw ECFS archive (no new download needed per lake), merge, then spin-up + scored run — now wrapped in one script, `scripts/run_lake_pipeline.sh SITE LAT LON [NLOOP]`, once physiography and forcing are staged. **Post-processing and benchmarking**: not started — see [Open work](#open-work).
+Every lake went through the same four stages — physiography staged for the point, per-year forcing extraction against the shared raw ECFS archive (no new download needed per lake), merge, then spin-up + scored run — now wrapped in one script, `scripts/run_lake_pipeline.sh SITE LAT LON [NLOOP]`, once physiography and forcing are staged. **Post-processing and benchmarking**: implemented and run on all seven lakes — see [Benchmark results](#benchmark-results-2026-09-14).
 
 **Read [Spin-up doesn't always converge the same way](#spin-up-doesnt-always-converge-the-same-way) before running a new lake** — the default `NLOOP=8` was silently wrong for one of the six candidates.
 
@@ -181,11 +181,62 @@ scripts/run_lake_pipeline.sh Vi-001 -1.2625 33.2334 40    # override NLOOP for a
 ### 5. Post-process and benchmark
 
 ```bash
-python3 scripts/postproc_lake.py --inputdir output --outdir postprocessed
-python3 scripts/benchmark_lake.py --model-dir postprocessed --obs-dir obs --out-dir benchmark/dashboards/<run-name>
+python3 scripts/postproc_lake.py --inputdir output_spunup --outdir postprocessed
+python3 scripts/benchmark_lake.py --model-dir postprocessed --out-dir benchmark/dashboards/<run-name>
 ```
 
-Both are currently stubs — see [Open work](#open-work).
+`postproc_lake.py` reads FLake's prognostic fields (`AvgSurfT`, `TLWML`, `TLMNW`,
+`TLBOT`, `TLICE`, `HLML`, `HLICE`) out of each lake's `o_gg.nc` onto a real
+datetime axis, one NetCDF per lake under `--outdir`.
+
+`benchmark_lake.py` scores every lake in `sites/lakes.csv` that has a
+`cci_lake_id` and a `run_complete*` status against the ESA CCI Lakes LSWT
+product (`--obs-dir` defaults to the confirmed location,
+`/ec/res4/hpcperm/pa5/MONTHLY_LAKES/DATA_FOR_PAPER/CLIPPED_INSITU_005deg/` —
+see [Benchmark results](#benchmark-results-2026-09-14) for how that was
+sourced) spatially averaged over each lake's CCI bounding box, at daily
+resolution. It scores two model variables against the same obs rather than
+picking one: `TLWML` (the mixed-layer temperature, the LSWT proxy documented
+in the namelist header) and `AvgSurfT` (skin temperature) — see below for why
+that comparison itself was worth keeping. Writes a metrics CSV, a JSON of the
+aligned series, and a self-contained HTML dashboard (matplotlib PNGs embedded
+inline, no JS charting library, so it opens with no network access) to
+`--out-dir`.
+
+### Benchmark results (2026-09-14)
+
+First real scoring, all seven lakes, `TLWML`/`AvgSurfT` vs. CCI Lakes daily45
+LSWT over each lake's overlapping obs record within 2017-2022:
+
+| site | lake | n days | TLWML bias (K) | TLWML rmse (K) | TLWML r | AvgSurfT bias (K) | AvgSurfT r |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Ld-001 | Ladoga | 1613 | +0.52 | 2.08 | 0.95 | +0.20 | 0.90 |
+| Br-001 | Baringo | 449 | +2.00 | 2.15 | 0.52 | +2.00 | 0.52 |
+| Ch-001 | Chilwa | 640 | +0.74 | 1.24 | 0.91 | +0.74 | 0.91 |
+| Ky-001 | Kyoga | 301 | +1.77 | 1.94 | 0.72 | +1.77 | 0.72 |
+| Mw-001 | Mweru Wantipa | 693 | +0.17 | 0.98 | 0.86 | +0.17 | 0.86 |
+| Ta-001 | Tana | 1177 | +1.20 | 1.57 | 0.73 | +1.20 | 0.73 |
+| Vi-001 | Victoria | 700 | +1.19 | 1.44 | 0.74 | +1.19 | 0.74 |
+
+Correlations of 0.5-0.95 and biases mostly under 2 K, from a pipeline that
+had never been checked against any observation before this — a genuinely
+useful first result, not just a plumbing test.
+
+**`TLWML` and `AvgSurfT` are near-identical in the shallow lakes but diverge
+sharply at Ladoga**, and the shape of that divergence validates the
+namelist's documented choice of `TLWML` as the LSWT proxy: at Ladoga,
+`AvgSurfT` repeatedly plunges 10-20 K below both `TLWML` and the observed
+LSWT in winter (visible as sharp downward spikes each Dec-Mar in the
+dashboard plot), consistent with the skin temperature responding to
+instantaneous radiative cooling that the mixed-layer bulk temperature
+(correctly) damps out. At the six shallow, unstratified candidates the two
+variables track each other almost exactly (same bias/rmse/r to 2-3 decimals)
+because there's no separate mixed layer for them to diverge from — the
+choice only matters once a lake is deep enough to stratify.
+
+Obs coverage is uneven and sometimes low (Br-001 and Ky-001 have well under
+half of the 6-year period, since satellite LSWT retrieval is cloud-limited)
+— treat n < ~500 days as a lower-confidence score, not a wider bias.
 
 ## Namelists
 
@@ -568,7 +619,7 @@ cover for that.
 
 **A silently frozen lake state has now been seen three times, from three unrelated causes** -- the single-precision binary above; `soil_water_flake_port` disabling `LDLAKE` at 100%-lake points; and, once that was fixed in the physiography, the same branch nudging a shallow lake onto a soil column that is itself constant (all three under [Retest](#retest-gpbalsamoeclandsoil_water_flake_port-2026-09-06----does-not-run-these-lakes)). All three exit 0, write every expected file, and produce a `check_spinup_convergence.py` table of `delta = 0.00000`. Treat a constant FLake column as a failure signature in its own right: look at the values, not only the loop-to-loop deltas. It is worth reading the soil column too — a `SoilTemp` that is identical at all four levels and unchanging is the tell for a point whose land tiles carry zero fraction.
 
-**`o_lke.nc` cannot be produced by any locally available build.** Tried with `LWRLKE=.TRUE.` on all four builds under `$PERM` (`ecland-build`, `ecland-build_dev`, `ecland-build_v1.0`, and `ecland-master-dp` itself) — every one aborts with `NETCDF-FILE o_lke.nc not Available ! check previous model versions`; the namelist flag exists but the writer isn't compiled into any of these binaries. This doesn't block anything, though: `o_gg.nc` already carries FLake's complete prognostic state per grid point (see the namelist's own comment for the field list) — that's what `scripts/postproc_lake.py` should read once it's implemented, not `o_lke.nc`.
+**`o_lke.nc` cannot be produced by any locally available build.** Tried with `LWRLKE=.TRUE.` on all four builds under `$PERM` (`ecland-build`, `ecland-build_dev`, `ecland-build_v1.0`, and `ecland-master-dp` itself) — every one aborts with `NETCDF-FILE o_lke.nc not Available ! check previous model versions`; the namelist flag exists but the writer isn't compiled into any of these binaries. This doesn't block anything, though: `o_gg.nc` already carries FLake's complete prognostic state per grid point (see the namelist's own comment for the field list) — that's what `scripts/postproc_lake.py` reads, not `o_lke.nc`.
 
 **`ecland_run_model.sh` needs its output directory pre-created.** `abs_path()` on `OUTPUTDIR/STA` runs before the script's own `mkdir -p ${OUTPUTDIR}`, so a fresh `-o` target fails with a `cd: No such file or directory` from inside `abs_path`, not a clearer error at the point of use. `ecland_run_experiment.sh` doesn't hit this (its `OUTPUT_DIR` defaults to an existing `output/`, or you're expected to have created a custom one) — but calling `ecland_run_model.sh` directly, as the smoke test above does, needs `mkdir -p output` (or whatever `-o` names) first.
 
@@ -577,8 +628,8 @@ cover for that.
 ```
 ifs-lakebench/
 ├── sites/
-│   ├── lakes.csv                # registry: one row per lake actually staged/run (site_id, lat/lon, dates, portal job, status)
-│   ├── candidate_lakes.csv      # lakes to try next -- physical parameters only, not yet extracted
+│   ├── lakes.csv                # registry: one row per lake actually staged/run (site_id, cci_lake_id, lat/lon, dates, portal job, status)
+│   ├── candidate_lakes.csv      # lakes to try next -- 92 rows from Margarita Choulga's ESA CCI Lakes list (2026-09-14), not yet extracted
 │   └── provenance/<job_id>/     # request.json etc. from each staged ecland-portal job -- not in git
 ├── namelists/                   # ecLand namelist configurations
 ├── scripts/
@@ -596,15 +647,15 @@ ifs-lakebench/
 │   ├── compare_lake_runs.py     # diff two run trees field by field (one ecLand build against another)
 │   ├── set_lake_subsurface.py   # give a dominant lake point a defined soil texture + grassland below it
 │   ├── run_lake_pipeline.sh     # merge -> namelists -> spin-up -> scored run, one call per lake
-│   ├── postproc_lake.py         # STUB: raw ecLand output -> lake variable schema
-│   └── benchmark_lake.py        # STUB: score against ESA-CCI-Lakes observations
+│   ├── postproc_lake.py         # raw ecLand o_gg.nc -> per-lake FLake-schema NetCDF
+│   └── benchmark_lake.py        # score against ESA-CCI-Lakes LSWT, write metrics CSV + HTML dashboard
 ├── clim/CCI_LAKES/              # staged physiography/init (NetCDF) -- not in git
 ├── forcing/
 │   ├── raw/                     # daily global GRIB tarballs from ECFS -- not in git
 │   ├── _decompressed_cache/     # shared per-day decompression cache, across all lakes -- not in git
 │   ├── logs/                    # get_forcing_ecfs.sbatch stdout/stderr -- not in git
 │   └── CCI_LAKES/               # ecLand-ready, point-extracted forcing (NetCDF) -- not in git
-├── obs/                         # ESA-CCI-Lakes observational product -- not sourced yet, not in git
+├── obs/                         # unused -- ESA-CCI-Lakes obs is read directly from its hpcperm location, see Benchmark results
 ├── retest/                      # re-runs against a non-default ecLand build
 │   ├── run_retest.sbatch        #   \_ one job per lake per build, into retest/<variant>/
 │   ├── lakes.txt                #   \_ the seven lakes and the NLOOP each needs
@@ -623,10 +674,10 @@ Note: `forcing/raw/`, `forcing/_decompressed_cache/` and `forcing/logs/` above l
 - **Resolve Victoria's spin-up properly** (see [Spin-up doesn't always converge the same way](#spin-up-doesnt-always-converge-the-same-way)) — likely needs a real multi-year spin-up sequence rather than more loops of one repeated year, if the deep-water (`TLBOT`) state turns out to matter for this lake.
 - **Re-test `soil_water_flake_port` once the nudging is settled** (see [Retest](#retest-gpbalsamoeclandsoil_water_flake_port-2026-09-06----does-not-run-these-lakes)). With a defined subsurface (`scripts/set_lake_subsurface.py`) the branch builds — given `retest/patches/0001`, which wants folding in upstream — runs all seven lakes, and is bit-identical to the control from 10 m depth up. What is left is the `T_mnw` nudging at or below `RDEPTH_W_MIN`, which slaves a shallow lake to the top 3.5 cm of soil. `retest/run_retest.sbatch` re-runs all seven lakes against a new build unchanged.
 - **Push the subsurface fix upstream into ecland-portal.** `which_surface: lake` should write a defined soil texture and low-vegetation type below a dominant lake point instead of zeros, which would retire `scripts/set_lake_subsurface.py`. Separately, `surfrad_ctl_mod.F90:373` divides by `RWCAPM3D-RWPWPM3D` without the guard `srfcotwo_mod.F90:346` uses on the same quantity — worth fixing whatever the physiography says.
-- **Add more lakes.** `sites/candidate_lakes.csv` is currently empty (all six of its previous entries completed and moved to `sites/lakes.csv`) — add the next batch there with the same physical-parameter columns, then run each through ecland-portal physiography + `extract_point_forcing_ecfs.sbatch` (one job per year) + `scripts/run_lake_pipeline.sh`.
-- **Source the ESA-CCI-Lakes observational product.** Most likely the lake surface water temperature (LSWT) product; possibly also ice cover/duration. Nothing CCI-Lakes-shaped was found under `$PERM` while setting this repo up.
-- **Implement `postproc_lake.py`** to read the FLake fields from `o_gg.nc` (see [Known issues](#known-issues) for the field list — confirmed present, physically evolving and stable across a full 6-year run, for seven lakes with widely varying depth and climate now) into whatever schema `benchmark_lake.py` ends up scoring against.
-- **Implement `benchmark_lake.py`** once both of the above exist — likely following `plumber2-ecland/scripts/benchmark_plumber2.py`'s shape (per-site scores, self-contained HTML dashboard), scored per lake instead of per flux tower.
+- **Run the next batch of lakes.** `sites/candidate_lakes.csv` holds 92 lakes from Margarita Choulga's ESA CCI Lakes list (2026-09-14) — `lat`/`lon` there is each lake's CCI bounding-box centroid (not a validated single point) and `elevation_m`/`area_km2`/`mean_depth_m`/`max_depth_m` are blank (not supplied by that source, unlike the physical-parameter table the first six candidates came from) — confirm each against ecland-portal's own physiography once staged, same as the original six. Then physiography + `extract_point_forcing_ecfs.sbatch` (one job per year) + `scripts/run_lake_pipeline.sh` + `postproc_lake.py` + `benchmark_lake.py`, same pipeline throughout.
+- **Investigate the `AvgSurfT` vs. `TLWML` divergence properly.** See [Benchmark results](#benchmark-results-2026-09-14) — confirmed at Ladoga (the only stratifying lake benchmarked so far) but not yet checked against ice-covered-period behaviour specifically, or against a lake deeper/more stratified than Ladoga.
+- **Score ice phenology.** The CCI Lakes product used so far (`daily45`) carries `lswt`/`lswt_uncertainty` only; ice cover/duration would need a different CCI Lakes product (not yet located) compared against `HLICE`, which `postproc_lake.py` already extracts.
+- **A lake's obs coverage varies a lot** (301-1613 of ~2192 possible days in this first benchmark) — worth weighting or flagging low-n lakes in the dashboard rather than just reporting the CSV field, once more lakes are scored and this becomes a readability problem.
 
 ## License
 
