@@ -136,6 +136,8 @@ def make_plot_png(site_id: str, lake_name: str, dates: pd.DatetimeIndex,
 
 DASHBOARD_HTML_HEAD = """<!doctype html>
 <html><head><meta charset="utf-8"><title>ifs-lakebench benchmark</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <style>
 body{font-family:sans-serif;margin:2em;background:#fafafa;color:#222}
 table{border-collapse:collapse;margin-bottom:2em}
@@ -143,13 +145,21 @@ th,td{border:1px solid #ccc;padding:4px 8px;text-align:right;font-size:13px}
 th{background:#eee}
 td:first-child,th:first-child{text-align:left}
 img{max-width:100%;border:1px solid #ddd;margin-bottom:1.5em}
-h2{margin-top:2.5em}
+h2{margin-top:2.5em;scroll-margin-top:1em}
+h2.flash{animation:flash 1.4s ease}
+@keyframes flash{0%{background:#fff3b0}100%{background:transparent}}
 .note{color:#666;font-size:13px;max-width:60em}
+#map{height:440px;margin-bottom:1.5em;border:1px solid #ccc}
+.legend{background:white;padding:6px 10px;font-size:12px;line-height:1.6;border-radius:4px;
+        box-shadow:0 0 6px rgba(0,0,0,0.3)}
+.legend span{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
 </style></head><body>
 <h1>ifs-lakebench: ecLand vs. ESA-CCI-Lakes LSWT</h1>
 <p class="note">Model variables: TLWML (FLake mixed-layer temperature, the documented LSWT proxy)
 and AvgSurfT (skin temperature). Obs: CCI Lakes daily45 (quality flags 4-5), spatially averaged
-over each lake's bounding box. Metrics computed on days where both obs and model have valid values.</p>
+over each lake's bounding box. Metrics computed on days where both obs and model have valid values.
+Marker colour is TLWML bias magnitude -- click a marker to jump to that lake's detail below.</p>
+<div id="map"></div>
 """
 
 
@@ -165,10 +175,70 @@ def build_dashboard(records: list[dict], out_dir: Path) -> None:
                         f"<td>{m.get('r', '-')}</td><td>{m.get('nme', '-')}</td></tr>")
     html.append('</table>')
     for rec in records:
-        html.append(f"<h2>{rec['site_id']} &mdash; {rec['lake_name']}</h2>")
+        html.append(f'<h2 id="lake-{rec["site_id"]}">{rec["site_id"]} &mdash; {rec["lake_name"]}</h2>')
         html.append(f'<img src="data:image/png;base64,{rec["plot_png"]}" alt="{rec["site_id"]} time series">')
-    html.append('</body></html>')
+    html.append('</body>')
+    html.append(_map_script(records))
+    html.append('</html>')
     (out_dir / 'index.html').write_text('\n'.join(html), encoding='utf-8')
+
+
+def _bias_color(bias: float | None) -> str:
+    """Green/orange/red by |TLWML bias| -- an at-a-glance quality signal, not a
+    precise scale; the metrics table has the exact numbers."""
+    if bias is None:
+        return '#888'
+    a = abs(bias)
+    if a < 0.5:
+        return '#2ca02c'
+    if a < 1.5:
+        return '#ff7f0e'
+    return '#d62728'
+
+
+def _map_script(records: list[dict]) -> str:
+    points = []
+    for rec in records:
+        bias = rec['metrics'].get('TLWML', {}).get('bias')
+        points.append({
+            'site_id': rec['site_id'], 'lake_name': rec['lake_name'],
+            'lat': rec['lat'], 'lon': rec['lon'], 'bias': bias,
+            'color': _bias_color(bias),
+        })
+    points_json = json.dumps(points)
+    return f"""<script>
+const LAKE_POINTS = {points_json};
+const map = L.map('map').setView([15, 20], 2);
+L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+  maxZoom: 12,
+  attribution: '&copy; OpenStreetMap contributors'
+}}).addTo(map);
+
+LAKE_POINTS.forEach(p => {{
+  const marker = L.circleMarker([p.lat, p.lon], {{
+    radius: 7, color: '#333', weight: 1, fillColor: p.color, fillOpacity: 0.9
+  }}).addTo(map);
+  const biasTxt = p.bias === null ? 'n/a' : p.bias.toFixed(2) + ' K';
+  marker.bindTooltip(`${{p.site_id}} ${{p.lake_name}} (TLWML bias ${{biasTxt}})`);
+  marker.on('click', () => {{
+    const el = document.getElementById('lake-' + p.site_id);
+    if (!el) return;
+    el.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  }});
+}});
+
+const legend = L.control({{position: 'bottomright'}});
+legend.onAdd = () => {{
+  const div = L.DomUtil.create('div', 'legend');
+  div.innerHTML = '<b>TLWML bias</b><br>' +
+    '<span style="background:#2ca02c"></span>&lt; 0.5 K<br>' +
+    '<span style="background:#ff7f0e"></span>0.5-1.5 K<br>' +
+    '<span style="background:#d62728"></span>&gt; 1.5 K';
+  return div;
+}};
+legend.addTo(map);
+</script>"""
 
 
 def read_lakes_csv(path: Path) -> list[dict]:
