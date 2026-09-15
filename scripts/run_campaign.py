@@ -43,7 +43,6 @@ LOG_PATH = REPO / "scripts/campaign.log"
 YEARS = list(range(2017, 2023))
 
 SUBMIT_CAP = 96  # QOS MaxSubmitPU=100 for account ecrdmocp/nf; small buffer
-JOB_NAME = "extract-point-forcing"
 CONVERGED_THRESHOLD = 0.01
 STATUS_ACTIVE = "physiography_done_forcing_extracting"
 
@@ -81,12 +80,32 @@ def surfclim_file(site_id: str) -> Path:
     return CLIM_DIR / f"surfclim_{site_id}_2017-2022.nc"
 
 
-def squeue_count(job_name: str = JOB_NAME) -> int:
+def job_name_for(site_id: str, year: int) -> str:
+    return f"extract-{site_id}-{year}"
+
+
+def list_extraction_job_names() -> set[str]:
+    """All this user's currently pending/running extraction job names, however
+    named -- used both to count queue occupancy and to check whether a
+    specific lake-year already has a job in flight before submitting another.
+
+    Fixes a real bug found 2026-09-15: the old squeue_count() only checked
+    the *output file*'s existence before submitting, but that file is only
+    written at the very end of a ~4.3h job -- so every ~20min driver pass
+    resubmitted a fresh job for every lake-year still mid-flight, for the
+    entire time it was running. Confirmed via three separate SLURM jobs
+    (37005184, 37073969, 37141489) all racing on the same
+    _work_Pi-001_2017-2017/ directory -- one of them crashed with
+    FileNotFoundError on a day-1 crop file another process had already
+    consumed/removed. This was very likely the dominant cause of the
+    campaign's slow throughput, well beyond the structural 30-concurrent-job
+    QOS ceiling.
+    """
     out = subprocess.run(
-        ["squeue", "-u", os.environ["USER"], "-h", "-n", job_name, "-o", "%i"],
+        ["squeue", "-u", os.environ["USER"], "-h", "-o", "%j"],
         capture_output=True, text=True,
     ).stdout
-    return len([l for l in out.splitlines() if l.strip()])
+    return {l.strip() for l in out.splitlines() if l.strip().startswith("extract-")}
 
 
 def submit_extraction_row(row: dict, year: int) -> None:
@@ -99,7 +118,8 @@ def submit_extraction_row(row: dict, year: int) -> None:
         f"OUT={out_file},WORK_DIR={work_dir}"
     )
     subprocess.run(
-        ["sbatch", f"--export={export}", "scripts/extract_point_forcing_ecfs.sbatch"],
+        ["sbatch", f"--job-name={job_name_for(row['site_id'], year)}",
+         f"--export={export}", "scripts/extract_point_forcing_ecfs.sbatch"],
         cwd=REPO, check=True, capture_output=True, text=True,
     )
 
@@ -292,11 +312,14 @@ def run_once() -> bool:
 
     # Round-robin missing years across lakes so many lakes approach
     # "all 6 years present" together, rather than draining one lake's
-    # 6 jobs before starting the next.
+    # 6 jobs before starting the next. Skip any (site, year) that already
+    # has a job in flight -- see list_extraction_job_names()'s docstring.
+    inflight = list_extraction_job_names()
     missing = [(row, year) for year in YEARS for row in active
-               if not forcing_file(row["site_id"], year).exists()]
+               if not forcing_file(row["site_id"], year).exists()
+               and job_name_for(row["site_id"], year) not in inflight]
 
-    n_queued = squeue_count()
+    n_queued = len(inflight)
     slots = max(0, SUBMIT_CAP - n_queued)
     submitted = 0
     for row, year in missing[:slots]:
