@@ -194,14 +194,19 @@ datetime axis, one NetCDF per lake under `--outdir`.
 product (`--obs-dir` defaults to the confirmed location,
 `/ec/res4/hpcperm/pa5/MONTHLY_LAKES/DATA_FOR_PAPER/CLIPPED_INSITU_005deg/` —
 see [Benchmark results](#benchmark-results-2026-09-14) for how that was
-sourced) spatially averaged over each lake's CCI bounding box, at daily
-resolution. It scores two model variables against the same obs rather than
-picking one: `TLWML` (the mixed-layer temperature, the LSWT proxy documented
-in the namelist header) and `AvgSurfT` (skin temperature) — see below for why
-that comparison itself was worth keeping. Writes a metrics CSV, a JSON of the
-aligned series, and a self-contained HTML dashboard (matplotlib PNGs embedded
-inline, no JS charting library, so it opens with no network access) to
-`--out-dir`.
+sourced) spatially averaged over each lake's CCI bounding box. It scores two
+model variables against the same obs rather than picking one: `TLWML` (the
+mixed-layer temperature, the LSWT proxy documented in the namelist header)
+and `AvgSurfT` (skin temperature) — see below for why that comparison itself
+was worth keeping. Each variable is scored two ways (see
+[Overpass-time sampling](#overpass-time-sampling-2026-09-16)):
+`overpass` (the model sampled at the satellite's UTC overpass hour, computed
+per lake from its longitude — the correct comparison, since the obs are an
+instantaneous polar-orbiter retrieval, not a daily average) and `daily_mean`
+(the original method, kept for reference). Writes a metrics CSV, a JSON of
+the aligned series, and a self-contained HTML dashboard (matplotlib PNGs
+embedded inline, no JS charting library, so it opens with no network access)
+to `--out-dir`.
 
 ### Benchmark results (2026-09-14)
 
@@ -221,6 +226,40 @@ LSWT over each lake's overlapping obs record within 2017-2022:
 Correlations of 0.5-0.95 and biases mostly under 2 K, from a pipeline that
 had never been checked against any observation before this — a genuinely
 useful first result, not just a plumbing test.
+
+### Overpass-time sampling (2026-09-16)
+
+Margarita Choulga's recommendation, discussed directly with her: the CCI
+Lakes LSWT product is a polar-orbiter retrieval at a fixed *local solar
+time* (10:30 LST for Terra MODIS), not a daily average — so comparing it
+against the model's **daily mean** is the wrong comparison whenever a lake
+has a real diurnal cycle. The correct comparison samples the model at the
+same instant the satellite actually measured: `UTC = LST - longitude/15`
+(`scripts/benchmark_lake.py`'s `overpass_utc_hour()`), then picks the
+model's hourly value at that UTC hour for each day, rather than averaging
+the whole day.
+
+Re-scored all 19 lakes completed so far both ways:
+
+| site | lake | TLWML bias, overpass (K) | TLWML bias, daily mean (K) |
+| --- | --- | --- | --- |
+| Ch-001 | Chilwa | +0.05 | +0.74 |
+| Na-001 | Natron | +2.98 | +3.58 |
+| Th-001 | Therthar | +0.06 | +0.56 |
+| Ma-001 | Malawi | +0.06 | +0.27 |
+| Ra-001 | Razazza | +0.10 | +0.48 |
+| Ur-001 | Urmia | -0.20 | +0.29 |
+| Ld-001 | Ladoga | +0.45 | +0.52 |
+| ... | (12 more) | | |
+
+**15 of 19 lakes moved closer to zero bias** under overpass sampling
+(4 moved slightly further, all still under 1.1 K: Mweru Wantipa, Tengiz,
+Toshka, Turkana) — confirming the daily-mean method was carrying a real,
+mostly-one-directional bias, not just adding noise. `benchmark_lake.py`
+now reports both methods side by side (a `method` column in the metrics
+CSV, both rows per lake/variable in the dashboard table) rather than
+replacing the old method outright, so the size of this effect stays
+visible rather than silently baked in.
 
 **`TLWML` and `AvgSurfT` are near-identical in the shallow lakes but diverge
 sharply at Ladoga**, and the shape of that divergence validates the

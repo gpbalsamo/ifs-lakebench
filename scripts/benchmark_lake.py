@@ -2,18 +2,27 @@
 """Score postprocessed ecLand lake output against ESA-CCI-Lakes LSWT observations.
 
 For each lake in sites/lakes.csv with a completed run and a known CCI Lakes id
-(the cci_lake_id column), compares the model's daily-mean lake temperature
-against the daily-mean, quality-filtered (flags 4-5, "daily45") CCI Lakes
-lake-surface-water-temperature (LSWT) product, spatially averaged over the
-lake's CCI bounding box (the model is single-point; the obs product is
-gridded over the whole lake, so a spatial mean is the only fair match for a
-single representative point). Two model variables are scored against the
-same obs: TLWML (FLake's mixed-layer temperature, documented in
-namelists/namelist_ecland_lake_ctl's header as the LSWT proxy to use) and
-AvgSurfT (the skin temperature, closer to what a thermal-IR retrieval
-actually senses) -- reported side by side rather than picking one, since
-which is the better proxy is itself an open question this benchmark can help
-answer.
+(the cci_lake_id column), compares modelled lake temperature against the
+quality-filtered (flags 4-5, "daily45") CCI Lakes lake-surface-water-
+temperature (LSWT) product, spatially averaged over the lake's CCI bounding
+box (the model is single-point; the obs product is gridded over the whole
+lake, so a spatial mean is the only fair match for a single representative
+point). Two model variables are scored against the same obs: TLWML (FLake's
+mixed-layer temperature, documented in namelists/namelist_ecland_lake_ctl's
+header as the LSWT proxy to use) and AvgSurfT (the skin temperature, closer
+to what a thermal-IR retrieval actually senses) -- reported side by side
+rather than picking one, since which is the better proxy is itself an open
+question this benchmark can help answer.
+
+Each variable is scored two ways ("method" column/field): "overpass" samples
+the model's hourly output at the UTC hour matching the MODIS Terra satellite
+overpass (10:30 local solar time, computed per lake from its longitude --
+see overpass_utc_hour()) instead of averaging over the day, per Margarita
+Choulga's recommendation (2026-09-16): the obs are themselves an
+instantaneous polar-orbiter retrieval at a fixed local time, not a daily
+average, so a daily model mean is the wrong comparison -- the mismatch is
+largest for lakes with a strong diurnal cycle. "daily_mean" (the original
+method) is kept alongside for reference/comparison.
 
 Writes a per-lake/per-variable metrics CSV, a JSON of the aligned daily
 series (for the dashboard), and a self-contained HTML dashboard with one
@@ -85,7 +94,7 @@ def load_obs_daily(obs_dir: Path, cci_id: str, start: pd.Timestamp, end: pd.Time
     return series[~series.index.duplicated(keep='first')]
 
 
-def load_model_daily(path: Path) -> tuple[pd.DataFrame, float, float]:
+def load_model_hourly(path: Path) -> tuple[pd.DataFrame, float, float]:
     # postproc_lake.py writes CF-compliant "seconds since <date>" time units;
     # xarray decodes these to datetime64 on open (consuming the units attr),
     # so just use the decoded values directly rather than re-parsing them.
@@ -95,7 +104,35 @@ def load_model_daily(path: Path) -> tuple[pd.DataFrame, float, float]:
         lat = float(ds['latitude'].values)
         lon = float(ds['longitude'].values)
     df = pd.DataFrame(cols, index=pd.DatetimeIndex(times, name='time'))
-    return df.resample('1D').mean(), lat, lon
+    return df, lat, lon
+
+
+def overpass_utc_hour(lon: float, lst_hour: float = 10.5) -> float:
+    """UTC hour of the satellite overpass at this longitude.
+
+    Per Margarita Choulga's recommendation (2026-09-16): a polar-orbiting
+    sensor like MODIS Terra crosses a given point at a fixed *local solar
+    time* (10:30 LST for Terra), not a fixed UTC time -- so the UTC instant
+    of the overpass shifts with longitude: UTC = LST - longitude/15 (15
+    degrees of longitude per hour of solar time, east positive).
+    """
+    return (lst_hour - lon / 15.0) % 24.0
+
+
+def daily_mean(df: pd.DataFrame) -> pd.DataFrame:
+    return df.resample('1D').mean()
+
+
+def daily_at_overpass(df: pd.DataFrame, lon: float, lst_hour: float = 10.5) -> pd.DataFrame:
+    """One row per day: the model's hourly value at the UTC hour matching
+    this lake's satellite overpass, not a daily mean. This is the correct
+    comparison against a polar-orbiting LSWT retrieval, which is itself an
+    instantaneous snapshot at the overpass instant, not a daily average --
+    the mismatch matters most for lakes with a strong diurnal cycle."""
+    hour_idx = int(round(overpass_utc_hour(lon, lst_hour))) % 24
+    sub = df[df.index.hour == hour_idx].copy()
+    sub.index = sub.index.normalize()
+    return sub
 
 
 def compute_metrics(obs: np.ndarray, mod: np.ndarray) -> dict[str, float | int | None]:
@@ -158,21 +195,27 @@ h2.flash{animation:flash 1.4s ease}
 <p class="note">Model variables: TLWML (FLake mixed-layer temperature, the documented LSWT proxy)
 and AvgSurfT (skin temperature). Obs: CCI Lakes daily45 (quality flags 4-5), spatially averaged
 over each lake's bounding box. Metrics computed on days where both obs and model have valid values.
-Marker colour is TLWML bias magnitude -- click a marker to jump to that lake's detail below.</p>
+Marker colour is overpass-sampled TLWML bias magnitude -- click a marker to jump to that lake's detail below.</p>
 <div id="map"></div>
 """
 
 
 def build_dashboard(records: list[dict], out_dir: Path) -> None:
     html = [DASHBOARD_HTML_HEAD]
-    html.append('<h2>Summary metrics</h2><table><tr><th>Site</th><th>Lake</th><th>Variable</th>'
+    html.append('<h2>Summary metrics</h2>'
+                 '<p class="note">"overpass" samples the model at the MODIS Terra overpass UTC hour '
+                 '(10:30 LST, computed per lake from its longitude) instead of averaging over the day '
+                 '-- the correct comparison against a polar-orbiting instantaneous LSWT retrieval. '
+                 '"daily_mean" is kept alongside for reference.</p>'
+                 '<table><tr><th>Site</th><th>Lake</th><th>Method</th><th>Variable</th>'
                  '<th>N days</th><th>Bias (K)</th><th>RMSE (K)</th><th>r</th><th>NME</th></tr>')
     for rec in records:
-        for var in MODEL_VARS:
-            m = rec['metrics'].get(var, {})
-            html.append(f"<tr><td>{rec['site_id']}</td><td>{rec['lake_name']}</td><td>{var}</td>"
-                        f"<td>{m.get('n', 0)}</td><td>{m.get('bias', '-')}</td><td>{m.get('rmse', '-')}</td>"
-                        f"<td>{m.get('r', '-')}</td><td>{m.get('nme', '-')}</td></tr>")
+        for method in ('overpass', 'daily_mean'):
+            for var in MODEL_VARS:
+                m = rec['metrics'].get(method, {}).get(var, {})
+                html.append(f"<tr><td>{rec['site_id']}</td><td>{rec['lake_name']}</td><td>{method}</td>"
+                            f"<td>{var}</td><td>{m.get('n', 0)}</td><td>{m.get('bias', '-')}</td>"
+                            f"<td>{m.get('rmse', '-')}</td><td>{m.get('r', '-')}</td><td>{m.get('nme', '-')}</td></tr>")
     html.append('</table>')
     for rec in records:
         html.append(f'<h2 id="lake-{rec["site_id"]}">{rec["site_id"]} &mdash; {rec["lake_name"]}</h2>')
@@ -199,7 +242,7 @@ def _bias_color(bias: float | None) -> str:
 def _map_script(records: list[dict]) -> str:
     points = []
     for rec in records:
-        bias = rec['metrics'].get('TLWML', {}).get('bias')
+        bias = rec['metrics'].get('overpass', {}).get('TLWML', {}).get('bias')
         points.append({
             'site_id': rec['site_id'], 'lake_name': rec['lake_name'],
             'lat': rec['lat'], 'lon': rec['lon'], 'bias': bias,
@@ -219,7 +262,7 @@ LAKE_POINTS.forEach(p => {{
     radius: 7, color: '#333', weight: 1, fillColor: p.color, fillOpacity: 0.9
   }}).addTo(map);
   const biasTxt = p.bias === null ? 'n/a' : p.bias.toFixed(2) + ' K';
-  marker.bindTooltip(`${{p.site_id}} ${{p.lake_name}} (TLWML bias ${{biasTxt}})`);
+  marker.bindTooltip(`${{p.site_id}} ${{p.lake_name}} (overpass TLWML bias ${{biasTxt}})`);
   marker.on('click', () => {{
     const el = document.getElementById('lake-' + p.site_id);
     if (!el) return;
@@ -231,7 +274,7 @@ LAKE_POINTS.forEach(p => {{
 const legend = L.control({{position: 'bottomright'}});
 legend.onAdd = () => {{
   const div = L.DomUtil.create('div', 'legend');
-  div.innerHTML = '<b>TLWML bias</b><br>' +
+  div.innerHTML = '<b>Overpass TLWML bias</b><br>' +
     '<span style="background:#2ca02c"></span>&lt; 0.5 K<br>' +
     '<span style="background:#ff7f0e"></span>0.5-1.5 K<br>' +
     '<span style="background:#d62728"></span>&gt; 1.5 K';
@@ -281,35 +324,50 @@ def main() -> int:
         model_path = model_files[-1]
         print(f'[{i}/{len(lakes)}] {site_id} ({lake["lake_name"]}): {model_path.name}')
 
-        model_df, lat, lon = load_model_daily(model_path)
-        start, end = model_df.index[0], model_df.index[-1]
+        model_hourly, lat, lon = load_model_hourly(model_path)
+        overpass_hour = overpass_utc_hour(lon)
+        model_by_method = {
+            'overpass': daily_at_overpass(model_hourly, lon),
+            'daily_mean': daily_mean(model_hourly),
+        }
+        start = min(df.index[0] for df in model_by_method.values())
+        end = max(df.index[-1] for df in model_by_method.values())
         try:
             obs = load_obs_daily(args.obs_dir, lake['cci_lake_id'], start, end)
         except (FileNotFoundError, ValueError) as exc:
             print(f'    SKIP: {exc}')
             continue
 
-        common = model_df.index.intersection(obs.index)
-        obs_g = obs.loc[common].values
-        metrics = {}
-        model_series_full = {}
-        for var in MODEL_VARS:
-            if var not in model_df:
-                continue
-            mod_g = model_df.loc[common, var].values
-            good = np.isfinite(obs_g) & np.isfinite(mod_g)
-            metrics[var] = compute_metrics(obs_g[good], mod_g[good])
-            model_series_full[var] = model_df[var].reindex(common).values
-            rows.append({'site_id': site_id, 'lake_name': lake['lake_name'], 'variable': var,
-                         **metrics[var]})
-        n_valid = metrics.get('TLWML', {}).get('n', 0)
-        print(f'    {n_valid} overlapping obs/model days'
-              + (f", bias(TLWML)={metrics['TLWML']['bias']} K" if metrics.get('TLWML', {}).get('bias') is not None else ''))
+        metrics = {}       # metrics[method][var] = {...}
+        model_series_full = {}   # model_series_full[method][var] = aligned array, for the plot
+        for method, model_df in model_by_method.items():
+            common = model_df.index.intersection(obs.index)
+            obs_g = obs.loc[common].values
+            metrics[method] = {}
+            model_series_full[method] = {}
+            for var in MODEL_VARS:
+                if var not in model_df:
+                    continue
+                mod_g = model_df.loc[common, var].values
+                good = np.isfinite(obs_g) & np.isfinite(mod_g)
+                metrics[method][var] = compute_metrics(obs_g[good], mod_g[good])
+                model_series_full[method][var] = model_df[var].reindex(common).values
+                rows.append({'site_id': site_id, 'lake_name': lake['lake_name'], 'method': method,
+                             'variable': var, **metrics[method][var]})
+        common_overpass = model_by_method['overpass'].index.intersection(obs.index)
+        n_valid = metrics['overpass'].get('TLWML', {}).get('n', 0)
+        bias_overpass = metrics['overpass'].get('TLWML', {}).get('bias')
+        bias_mean = metrics['daily_mean'].get('TLWML', {}).get('bias')
+        print(f'    {n_valid} overlapping obs/model days (overpass UTC {overpass_hour:.1f}h)'
+              + (f', bias(TLWML) overpass={bias_overpass} K vs daily_mean={bias_mean} K'
+                 if bias_overpass is not None else ''))
 
-        plot_png = make_plot_png(site_id, lake['lake_name'], common, obs.loc[common].values, model_series_full)
+        plot_png = make_plot_png(site_id, lake['lake_name'], common_overpass,
+                                  obs.loc[common_overpass].values, model_series_full['overpass'])
         records.append({
             'site_id': site_id, 'lake_name': lake['lake_name'], 'cci_lake_id': lake['cci_lake_id'],
-            'lat': lat, 'lon': lon, 'metrics': metrics, 'plot_png': plot_png,
+            'lat': lat, 'lon': lon, 'overpass_utc_hour': round(overpass_hour, 2),
+            'metrics': metrics, 'plot_png': plot_png,
         })
 
     if not records:
@@ -318,7 +376,7 @@ def main() -> int:
 
     metrics_csv = out_dir / 'lake_benchmark_metrics.csv'
     with open(metrics_csv, 'w', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=['site_id', 'lake_name', 'variable', 'n', 'bias', 'rmse', 'r', 'nme'],
+        w = csv.DictWriter(f, fieldnames=['site_id', 'lake_name', 'method', 'variable', 'n', 'bias', 'rmse', 'r', 'nme'],
                             lineterminator='\n')
         w.writeheader()
         w.writerows(rows)
