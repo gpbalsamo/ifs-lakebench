@@ -112,12 +112,21 @@ def read_ldepth(site_id: str) -> float:
 
 def parse_max_delta(run_lake_pipeline_stdout: str) -> float | None:
     """run_lake_pipeline.sh already runs check_spinup_convergence.py internally
-    and prints its table (loop ... max_delta) to stdout -- read the last
-    loop's max_delta from that instead of re-running the check separately."""
+    and prints its table (loop ... ice_days max_delta) to stdout -- read the
+    last loop's max_delta from that instead of re-running the check
+    separately. Loop 1's row has no max_delta yet (8 fields: loop,
+    AvgSurfT, TLMNW, TLWML, TLBOT, HLML, HLICE, ice_days) -- every later
+    loop's row has 9 (max_delta appended). Matching on 8 fields, as an
+    earlier version of this function did, silently reads ice_days off
+    loop 1's row instead: caught 2026-09-15 when it mislabeled Ar-001 and
+    Te-001 as unconverged (large ice_days values, e.g. 3940, misread as a
+    temperature delta) while actually accepting Ro-001's real ~0.06 K/loop
+    drift as converged. Verified against Ladoga's and all 5 already-run
+    lakes' real traces before this fix."""
     candidate = None
     for line in run_lake_pipeline_stdout.splitlines():
         parts = line.split()
-        if len(parts) == 8 and parts[0].isdigit():
+        if len(parts) == 9 and parts[0].isdigit():
             try:
                 candidate = float(parts[-1])
             except ValueError:
@@ -147,6 +156,35 @@ def commit_and_push(message: str) -> None:
         log(f"WARNING: git push failed: {res.stderr.strip()}")
     else:
         log("committed and pushed")
+
+
+PHYSICAL_TEMP_RANGE_K = (200.0, 340.0)  # generous: -73C to +67C, covers every real lake
+
+
+def scored_run_is_physical(site_id: str) -> tuple[bool, str]:
+    """Sanity-check the full 2017-2022 scored run, not just spin-up
+    convergence -- a clean spin-up on one repeated year says nothing about
+    the 6-year run that's actually seeded from it. Caught 2026-09-15: Ar-001
+    (Aral Sea) spun up perfectly (max_delta=0.0) but its scored run diverges
+    to AvgSurfT=3405K by 2019 -- a real numerical blowup a convergence-only
+    check cannot see, since spin-up and the scored run are different
+    integrations sharing only their initial condition."""
+    import netCDF4 as nc
+    import numpy as np
+    path = REPO / "output_spunup" / f"{site_id}_2017-2022" / "o_gg.nc"
+    if not path.is_file():
+        return False, f"missing {path}"
+    lo, hi = PHYSICAL_TEMP_RANGE_K
+    with nc.Dataset(path) as ds:
+        for field in ("AvgSurfT", "TLWML"):
+            if field not in ds.variables:
+                continue
+            a = np.asarray(ds.variables[field][:], dtype=float).reshape(-1)
+            if np.isnan(a).any():
+                return False, f"{field} contains NaN"
+            if a.min() < lo or a.max() > hi:
+                return False, f"{field} range [{a.min():.1f}, {a.max():.1f}] K outside [{lo}, {hi}] K"
+    return True, ""
 
 
 def advance_lake(row: dict) -> bool:
@@ -183,6 +221,13 @@ def advance_lake(row: dict) -> bool:
     if res.returncode != 0:
         row["status"] = "failed: run_lake_pipeline.sh error, see scripts/campaign.log"
         log(f"{site_id}: pipeline FAILED: {res.stderr.strip()[-1000:]}")
+        return True
+
+    sane, reason = scored_run_is_physical(site_id)
+    if not sane:
+        row["status"] = f"failed: unphysical scored run ({reason})"
+        row["notes"] = row.get("notes", "").rstrip('"') + f" | Campaign: LDEPTH={ldepth:.2f}m, NLOOP={nloop}."
+        log(f"{site_id}: {row['status']}")
         return True
 
     delta = parse_max_delta(res.stdout)
