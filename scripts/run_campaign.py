@@ -351,7 +351,7 @@ def run_once() -> bool:
         commit_and_push(f"Campaign: advance lakes ({n_done}/{len(candidates)} resolved this pass)")
 
     remaining_active = [r for r in read_csv(CANDIDATES_CSV) if r["status"] == STATUS_ACTIVE]
-    still_queued = squeue_count() > 0
+    still_queued = len(list_extraction_job_names()) > 0
     return bool(remaining_active) or still_queued
 
 
