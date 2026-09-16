@@ -4,7 +4,10 @@
 
 The ecland-portal "which_surface: lake" physiography describes a 100 % lake
 point as if there were nothing below the water: landsea = 0, sotype = 0,
-tvl = tvh = 0, cvl = cvh = 0, and a soil moisture of ~1e-6 m3/m3. ecLand still
+tvl = tvh = 0, cvl = cvh = 0 (usually -- occasionally cvh/cu come through
+nonzero from the point's underlying ERA5 land classification anyway; this
+script now zeroes them explicitly rather than assuming they already are),
+and a soil moisture of ~1e-6 m3/m3. ecLand still
 carries a four-layer soil column at that point, so those zeros are not a
 "switched off" soil, they are an *undefined* one -- and every scheme that
 divides by a soil property inherits a 0/0:
@@ -33,13 +36,20 @@ What this writes, for every point with CLAKE >= --clake-min:
                       when it needs one everywhere (sussoil_mod.F90:430).
   tvl, cvl   2, 1.0   short grass at full cover; ecLand scales it by
                       RVCOV(2) = 0.85 in surfbc_ctl_mod.
+  tvh, cvh   -, 0.0   no high vegetation under a lake -- forced to 0 even if
+                      the raw physiography had some (found 2026-09-16: a
+                      point can carry nonzero cvh/cu from its underlying
+                      ERA5 land classification despite "which_surface: lake",
+                      and cvl=1.0 on top of an untouched cvh pushes the tile
+                      fractions over 1.0, which aborts the model outright
+                      with "SURFBC: TILING FRACTION IS WRONG!").
+  cu         0.0      no urban cover either, same reasoning.
   Mlail      2.0      RVLAI(2), so the LELAIV = .T. and .F. paths agree.
   SoilMoist  field capacity for the chosen texture, computed below from the
                       same van Genuchten parameters the model uses.
 
-tvh/cvh stay 0 (no high vegetation under a lake) and so do Malbedo and Ctype:
-the first only reaches zero-fraction tiles, and the second is unused by the
-physics in this ecLand version.
+Malbedo and Ctype are left alone: the first only reaches zero-fraction
+tiles, and the second is unused by the physics in this ecLand version.
 
 Usage:
   set_lake_subsurface.py SITE [SITE ...] --in-dir DIR --out-dir DIR
@@ -106,7 +116,8 @@ def patch_surfclim(path, args, lai):
             clake[sel] = args.set_clake
             ds.variables["CLAKE"][:] = clake
         for name, value in (("landsea", 1.0), ("sotype", float(args.sotype)),
-                            ("tvl", float(args.tvl)), ("cvl", float(args.cvl))):
+                            ("tvl", float(args.tvl)), ("cvl", float(args.cvl)),
+                            ("tvh", 0.0), ("cvh", 0.0), ("cu", 0.0)):
             v = ds.variables[name][:]
             v[sel] = value
             ds.variables[name][:] = v
