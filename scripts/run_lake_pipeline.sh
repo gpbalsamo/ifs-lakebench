@@ -84,11 +84,16 @@ fi
 
 # --- 2. Physiography for the 2017-only spin-up (content is end_date- -------
 #        independent, so this is a copy, not a re-extraction) --------------
+# Always overwrite, not "copy if missing": a lake re-staged with updated
+# physiography (e.g. scripts/set_lake_subsurface.py) would otherwise silently
+# keep running the spin-up against a stale pre-update _2017-2017 file forever
+# -- found 2026-09-16 when a landsea=1 physiography fix for Ar-001/Ru-001 had
+# no effect on the first retry for exactly this reason.
 for kind in surfclim surfinit; do
   src="${CLIM_DIR}/${kind}_${SITE}_2017-2022.nc"
   dst="${CLIM_DIR}/${kind}_${SITE}_2017-2017.nc"
   [[ -f "$src" ]] || { echo "ERROR: missing $src -- run stage_portal_job.sh for ${SITE} first" >&2; exit 1; }
-  [[ -f "$dst" ]] || cp -p "$src" "$dst"
+  cp -p "$src" "$dst"
 done
 
 extraction_modules() {
