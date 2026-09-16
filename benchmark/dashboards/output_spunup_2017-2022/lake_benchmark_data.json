@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-16T01:10:52Z",
+  "generated": "2026-09-16T04:16:46Z",
   "variables": [
     "TLWML",
     "AvgSurfT"
@@ -799,6 +799,174 @@
             "rmse": 1.0563,
             "r": 0.8717,
             "nme": 0.7586
+          }
+        }
+      }
+    },
+    {
+      "site_id": "Ru-001",
+      "lake_name": "Rukwa Lake",
+      "cci_lake_id": "100000011",
+      "lat": -7.95419979095459,
+      "lon": 32.2333984375,
+      "overpass_utc_hour": 8.35,
+      "metrics": {
+        "overpass": {
+          "TLWML": {
+            "n": 706,
+            "bias": 4.9992,
+            "rmse": 8.7463,
+            "r": 0.2441,
+            "nme": 4.0513
+          },
+          "AvgSurfT": {
+            "n": 706,
+            "bias": 4.9927,
+            "rmse": 8.7798,
+            "r": 0.242,
+            "nme": 4.0462
+          }
+        },
+        "daily_mean": {
+          "TLWML": {
+            "n": 706,
+            "bias": 5.1428,
+            "rmse": 8.798,
+            "r": 0.2391,
+            "nme": 4.167
+          },
+          "AvgSurfT": {
+            "n": 706,
+            "bias": 5.1413,
+            "rmse": 8.8098,
+            "r": 0.2395,
+            "nme": 4.1657
+          }
+        }
+      }
+    },
+    {
+      "site_id": "Ra-002",
+      "lake_name": "Rann Of Kutch Lake",
+      "cci_lake_id": "000001149",
+      "lat": 23.912500381469727,
+      "lon": 70.7249984741211,
+      "overpass_utc_hour": 5.79,
+      "metrics": {
+        "overpass": {
+          "TLWML": {
+            "n": 1285,
+            "bias": 0.7322,
+            "rmse": 4.9152,
+            "r": 0.3411,
+            "nme": 0.9922
+          },
+          "AvgSurfT": {
+            "n": 1285,
+            "bias": 0.7119,
+            "rmse": 4.9201,
+            "r": 0.3721,
+            "nme": 0.994
+          }
+        },
+        "daily_mean": {
+          "TLWML": {
+            "n": 1286,
+            "bias": 0.7087,
+            "rmse": 4.9221,
+            "r": 0.301,
+            "nme": 0.9933
+          },
+          "AvgSurfT": {
+            "n": 1286,
+            "bias": 0.7088,
+            "rmse": 4.922,
+            "r": 0.3011,
+            "nme": 0.9933
+          }
+        }
+      }
+    },
+    {
+      "site_id": "To-002",
+      "lake_name": "Tonle Sap Lake",
+      "cci_lake_id": "000000064",
+      "lat": 12.8125,
+      "lon": 104.14579772949219,
+      "overpass_utc_hour": 3.56,
+      "metrics": {
+        "overpass": {
+          "TLWML": {
+            "n": 134,
+            "bias": 548.9813,
+            "rmse": 625.5366,
+            "r": -0.1265,
+            "nme": 474.0473
+          },
+          "AvgSurfT": {
+            "n": 134,
+            "bias": 549.375,
+            "rmse": 629.55,
+            "r": -0.1325,
+            "nme": 474.3872
+          }
+        },
+        "daily_mean": {
+          "TLWML": {
+            "n": 134,
+            "bias": 540.7265,
+            "rmse": 609.3181,
+            "r": -0.1077,
+            "nme": 466.9192
+          },
+          "AvgSurfT": {
+            "n": 134,
+            "bias": 541.8399,
+            "rmse": 610.6618,
+            "r": -0.1099,
+            "nme": 467.8807
+          }
+        }
+      }
+    },
+    {
+      "site_id": "Ar-001",
+      "lake_name": "Aral Sea",
+      "cci_lake_id": "000000004",
+      "lat": 45.382198333740234,
+      "lon": 59.86309814453125,
+      "overpass_utc_hour": 6.51,
+      "metrics": {
+        "overpass": {
+          "TLWML": {
+            "n": 1754,
+            "bias": 648.5377,
+            "rmse": 765.7892,
+            "r": -0.1088,
+            "nme": 76.8888
+          },
+          "AvgSurfT": {
+            "n": 1754,
+            "bias": 647.5121,
+            "rmse": 763.7643,
+            "r": -0.1109,
+            "nme": 76.7715
+          }
+        },
+        "daily_mean": {
+          "TLWML": {
+            "n": 1755,
+            "bias": 641.2489,
+            "rmse": 748.0266,
+            "r": -0.1074,
+            "nme": 75.9918
+          },
+          "AvgSurfT": {
+            "n": 1755,
+            "bias": 641.4623,
+            "rmse": 748.2738,
+            "r": -0.108,
+            "nme": 76.0225
           }
         }
       }
