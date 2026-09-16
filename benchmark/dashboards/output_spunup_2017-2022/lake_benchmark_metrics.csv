@@ -75,19 +75,19 @@ Ma-001,Malawi Lake,overpass,TLWML,725,0.0593,1.031,0.8618,0.7354
 Ma-001,Malawi Lake,overpass,AvgSurfT,725,-0.1514,0.9808,0.8634,0.7062
 Ma-001,Malawi Lake,daily_mean,TLWML,725,0.2716,1.0576,0.8715,0.7593
 Ma-001,Malawi Lake,daily_mean,AvgSurfT,725,0.271,1.0563,0.8717,0.7586
-Ru-001,Rukwa Lake,overpass,TLWML,706,4.9992,8.7463,0.2441,4.0513
-Ru-001,Rukwa Lake,overpass,AvgSurfT,706,4.9927,8.7798,0.242,4.0462
-Ru-001,Rukwa Lake,daily_mean,TLWML,706,5.1428,8.798,0.2391,4.167
-Ru-001,Rukwa Lake,daily_mean,AvgSurfT,706,5.1413,8.8098,0.2395,4.1657
+Ru-001,Rukwa Lake,overpass,TLWML,706,5.6512,5.8551,0.7651,4.5787
+Ru-001,Rukwa Lake,overpass,AvgSurfT,706,5.6372,5.8417,0.7413,4.5674
+Ru-001,Rukwa Lake,daily_mean,TLWML,706,5.6297,5.8355,0.7175,4.5613
+Ru-001,Rukwa Lake,daily_mean,AvgSurfT,706,5.6297,5.8355,0.7201,4.5613
 Ra-002,Rann Of Kutch Lake,overpass,TLWML,1285,0.7322,4.9152,0.3411,0.9922
 Ra-002,Rann Of Kutch Lake,overpass,AvgSurfT,1285,0.7119,4.9201,0.3721,0.994
 Ra-002,Rann Of Kutch Lake,daily_mean,TLWML,1286,0.7087,4.9221,0.301,0.9933
 Ra-002,Rann Of Kutch Lake,daily_mean,AvgSurfT,1286,0.7088,4.922,0.3011,0.9933
-To-002,Tonle Sap Lake,overpass,TLWML,134,548.9813,625.5366,-0.1265,474.0473
-To-002,Tonle Sap Lake,overpass,AvgSurfT,134,549.375,629.55,-0.1325,474.3872
-To-002,Tonle Sap Lake,daily_mean,TLWML,134,540.7265,609.3181,-0.1077,466.9192
-To-002,Tonle Sap Lake,daily_mean,AvgSurfT,134,541.8399,610.6618,-0.1099,467.8807
-Ar-001,Aral Sea,overpass,TLWML,1754,648.5377,765.7892,-0.1088,76.8888
-Ar-001,Aral Sea,overpass,AvgSurfT,1754,647.5121,763.7643,-0.1109,76.7715
-Ar-001,Aral Sea,daily_mean,TLWML,1755,641.2489,748.0266,-0.1074,75.9918
-Ar-001,Aral Sea,daily_mean,AvgSurfT,1755,641.4623,748.2738,-0.108,76.0225
+To-002,Tonle Sap Lake,overpass,TLWML,134,-2.5386,2.9072,0.4538,2.2149
+To-002,Tonle Sap Lake,overpass,AvgSurfT,134,-2.5689,2.9413,0.45,2.2402
+To-002,Tonle Sap Lake,daily_mean,TLWML,134,-2.575,2.9448,0.4504,2.2448
+To-002,Tonle Sap Lake,daily_mean,AvgSurfT,134,-2.575,2.9449,0.4508,2.2448
+Ar-001,Aral Sea,overpass,TLWML,1754,-14.2775,17.105,0.8715,1.6918
+Ar-001,Aral Sea,overpass,AvgSurfT,1754,-12.574,16.9842,-0.1199,1.7001
+Ar-001,Aral Sea,daily_mean,TLWML,1755,-14.2811,17.1154,0.8747,1.6915
+Ar-001,Aral Sea,daily_mean,AvgSurfT,1755,-12.259,16.6131,-0.1757,1.6198

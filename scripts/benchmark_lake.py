@@ -14,20 +14,25 @@ to what a thermal-IR retrieval actually senses) -- reported side by side
 rather than picking one, since which is the better proxy is itself an open
 question this benchmark can help answer.
 
-Each variable is scored two ways ("method" column/field): "overpass" samples
-the model's hourly output at the UTC hour matching the MODIS Terra satellite
-overpass (10:30 local solar time, computed per lake from its longitude --
-see overpass_utc_hour()) instead of averaging over the day, per Margarita
+Each variable is scored two ways ("method"): "overpass" samples the model's
+hourly output at the UTC hour matching the MODIS Terra satellite overpass
+(10:30 local solar time, computed per lake from its longitude -- see
+overpass_utc_hour()) instead of averaging over the day, per Margarita
 Choulga's recommendation (2026-09-16): the obs are themselves an
 instantaneous polar-orbiter retrieval at a fixed local time, not a daily
 average, so a daily model mean is the wrong comparison -- the mismatch is
 largest for lakes with a strong diurnal cycle. "daily_mean" (the original
 method) is kept alongside for reference/comparison.
 
-Writes a per-lake/per-variable metrics CSV, a JSON of the aligned daily
-series (for the dashboard), and a self-contained HTML dashboard with one
-time-series plot per lake -- rendered with matplotlib into embedded PNGs
-rather than a JS charting library, so it opens with no network access.
+Writes a per-lake/per-variable metrics CSV, a JSON of the full daily series,
+and a self-contained interactive HTML dashboard: a Leaflet world map plus a
+Plotly.js time-series panel (zoom, hover, per-series toggle) driven by a
+lake selector, modelled on ifs-riverbench's dashboard (map + toolbar +
+single live chart, rather than one static image per site stacked down the
+page). Both libraries load from their own CDNs, so this needs a live network
+connection to view -- reasonable for a page served from ECMWF Sites, unlike
+the matplotlib-PNG approach this replaced, which was built for opening with
+no network at all.
 
 Obs source, confirmed 2026-09-14 from Margarita Choulga's own reader code:
 /ec/res4/hpcperm/pa5/MONTHLY_LAKES/DATA_FOR_PAPER/CLIPPED_INSITU_005deg/
@@ -38,16 +43,11 @@ LAKE<cci_id>_daily45_<period>.nc, period in {1995_2001, 2002_2011, 2012_2024}.
 from __future__ import annotations
 
 import argparse
-import base64
 import csv
-import io
 import json
 import sys
 from pathlib import Path
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -59,7 +59,9 @@ DEFAULT_OUT_DIR = Path('benchmark/dashboards/default')
 
 OBS_PERIODS = ('1995_2001', '2002_2011', '2012_2024')
 MODEL_VARS = ('TLWML', 'AvgSurfT')
+METHODS = ('overpass', 'daily_mean')
 MIN_N = 20  # minimum overlapping daily obs to trust a lake's metrics
+KELVIN = 273.15
 
 
 def periods_for_range(start: pd.Timestamp, end: pd.Timestamp) -> list[str]:
@@ -152,136 +154,9 @@ def compute_metrics(obs: np.ndarray, mod: np.ndarray) -> dict[str, float | int |
     }
 
 
-def make_plot_png(site_id: str, lake_name: str, dates: pd.DatetimeIndex,
-                   obs: np.ndarray, model_series: dict[str, np.ndarray]) -> str:
-    fig, ax = plt.subplots(figsize=(11, 3.2), dpi=110)
-    ax.plot(dates, obs - 273.15, '.', color='black', markersize=2, alpha=0.6, label='CCI Lakes LSWT (obs)')
-    colors = {'TLWML': '#1f77b4', 'AvgSurfT': '#d62728'}
-    for name, series in model_series.items():
-        ax.plot(dates, series - 273.15, '-', color=colors.get(name, '#2ca02c'), linewidth=0.9,
-                 label=f'ecLand {name}', alpha=0.85)
-    ax.set_ylabel('Temperature (C)')
-    ax.set_title(f'{site_id}  {lake_name}')
-    ax.legend(loc='upper right', fontsize=8, ncol=3)
-    ax.grid(alpha=0.25)
-    fig.tight_layout()
-    buf = io.BytesIO()
-    fig.savefig(buf, format='png')
-    plt.close(fig)
-    return base64.b64encode(buf.getvalue()).decode('ascii')
-
-
-DASHBOARD_HTML_HEAD = """<!doctype html>
-<html><head><meta charset="utf-8"><title>ifs-lakebench benchmark</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<style>
-body{font-family:sans-serif;margin:2em;background:#fafafa;color:#222}
-table{border-collapse:collapse;margin-bottom:2em}
-th,td{border:1px solid #ccc;padding:4px 8px;text-align:right;font-size:13px}
-th{background:#eee}
-td:first-child,th:first-child{text-align:left}
-img{max-width:100%;border:1px solid #ddd;margin-bottom:1.5em}
-h2{margin-top:2.5em;scroll-margin-top:1em}
-h2.flash{animation:flash 1.4s ease}
-@keyframes flash{0%{background:#fff3b0}100%{background:transparent}}
-.note{color:#666;font-size:13px;max-width:60em}
-#map{height:440px;margin-bottom:1.5em;border:1px solid #ccc}
-.legend{background:white;padding:6px 10px;font-size:12px;line-height:1.6;border-radius:4px;
-        box-shadow:0 0 6px rgba(0,0,0,0.3)}
-.legend span{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
-</style></head><body>
-<h1>ifs-lakebench: ecLand vs. ESA-CCI-Lakes LSWT</h1>
-<p class="note">Model variables: TLWML (FLake mixed-layer temperature, the documented LSWT proxy)
-and AvgSurfT (skin temperature). Obs: CCI Lakes daily45 (quality flags 4-5), spatially averaged
-over each lake's bounding box. Metrics computed on days where both obs and model have valid values.
-Marker colour is overpass-sampled TLWML bias magnitude -- click a marker to jump to that lake's detail below.</p>
-<div id="map"></div>
-"""
-
-
-def build_dashboard(records: list[dict], out_dir: Path) -> None:
-    html = [DASHBOARD_HTML_HEAD]
-    html.append('<h2>Summary metrics</h2>'
-                 '<p class="note">"overpass" samples the model at the MODIS Terra overpass UTC hour '
-                 '(10:30 LST, computed per lake from its longitude) instead of averaging over the day '
-                 '-- the correct comparison against a polar-orbiting instantaneous LSWT retrieval. '
-                 '"daily_mean" is kept alongside for reference.</p>'
-                 '<table><tr><th>Site</th><th>Lake</th><th>Method</th><th>Variable</th>'
-                 '<th>N days</th><th>Bias (K)</th><th>RMSE (K)</th><th>r</th><th>NME</th></tr>')
-    for rec in records:
-        for method in ('overpass', 'daily_mean'):
-            for var in MODEL_VARS:
-                m = rec['metrics'].get(method, {}).get(var, {})
-                html.append(f"<tr><td>{rec['site_id']}</td><td>{rec['lake_name']}</td><td>{method}</td>"
-                            f"<td>{var}</td><td>{m.get('n', 0)}</td><td>{m.get('bias', '-')}</td>"
-                            f"<td>{m.get('rmse', '-')}</td><td>{m.get('r', '-')}</td><td>{m.get('nme', '-')}</td></tr>")
-    html.append('</table>')
-    for rec in records:
-        html.append(f'<h2 id="lake-{rec["site_id"]}">{rec["site_id"]} &mdash; {rec["lake_name"]}</h2>')
-        html.append(f'<img src="data:image/png;base64,{rec["plot_png"]}" alt="{rec["site_id"]} time series">')
-    html.append('</body>')
-    html.append(_map_script(records))
-    html.append('</html>')
-    (out_dir / 'index.html').write_text('\n'.join(html), encoding='utf-8')
-
-
-def _bias_color(bias: float | None) -> str:
-    """Green/orange/red by |TLWML bias| -- an at-a-glance quality signal, not a
-    precise scale; the metrics table has the exact numbers."""
-    if bias is None:
-        return '#888'
-    a = abs(bias)
-    if a < 0.5:
-        return '#2ca02c'
-    if a < 1.5:
-        return '#ff7f0e'
-    return '#d62728'
-
-
-def _map_script(records: list[dict]) -> str:
-    points = []
-    for rec in records:
-        bias = rec['metrics'].get('overpass', {}).get('TLWML', {}).get('bias')
-        points.append({
-            'site_id': rec['site_id'], 'lake_name': rec['lake_name'],
-            'lat': rec['lat'], 'lon': rec['lon'], 'bias': bias,
-            'color': _bias_color(bias),
-        })
-    points_json = json.dumps(points)
-    return f"""<script>
-const LAKE_POINTS = {points_json};
-const map = L.map('map').setView([15, 20], 2);
-L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-  maxZoom: 12,
-  attribution: '&copy; OpenStreetMap contributors'
-}}).addTo(map);
-
-LAKE_POINTS.forEach(p => {{
-  const marker = L.circleMarker([p.lat, p.lon], {{
-    radius: 7, color: '#333', weight: 1, fillColor: p.color, fillOpacity: 0.9
-  }}).addTo(map);
-  const biasTxt = p.bias === null ? 'n/a' : p.bias.toFixed(2) + ' K';
-  marker.bindTooltip(`${{p.site_id}} ${{p.lake_name}} (overpass TLWML bias ${{biasTxt}})`);
-  marker.on('click', () => {{
-    const el = document.getElementById('lake-' + p.site_id);
-    if (!el) return;
-    el.scrollIntoView({{behavior: 'smooth', block: 'start'}});
-    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
-  }});
-}});
-
-const legend = L.control({{position: 'bottomright'}});
-legend.onAdd = () => {{
-  const div = L.DomUtil.create('div', 'legend');
-  div.innerHTML = '<b>Overpass TLWML bias</b><br>' +
-    '<span style="background:#2ca02c"></span>&lt; 0.5 K<br>' +
-    '<span style="background:#ff7f0e"></span>0.5-1.5 K<br>' +
-    '<span style="background:#d62728"></span>&gt; 1.5 K';
-  return div;
-}};
-legend.addTo(map);
-</script>"""
+def series_to_c(s: pd.Series) -> list[float | None]:
+    """A pandas series to a JSON-safe list of Celsius values, NaN -> null."""
+    return [round(float(v) - KELVIN, 3) if np.isfinite(v) else None for v in s.values]
 
 
 def read_lakes_csv(path: Path) -> list[dict]:
@@ -330,31 +205,30 @@ def main() -> int:
             'overpass': daily_at_overpass(model_hourly, lon),
             'daily_mean': daily_mean(model_hourly),
         }
-        start = min(df.index[0] for df in model_by_method.values())
-        end = max(df.index[-1] for df in model_by_method.values())
+        # Both methods cover the same calendar days (one row/day either way),
+        # so their indexes should already match; union just guards against a
+        # one-day edge mismatch rather than assuming it.
+        full_dates = model_by_method['overpass'].index.union(model_by_method['daily_mean'].index)
+        start, end = full_dates[0], full_dates[-1]
         try:
             obs = load_obs_daily(args.obs_dir, lake['cci_lake_id'], start, end)
         except (FileNotFoundError, ValueError) as exc:
             print(f'    SKIP: {exc}')
             continue
 
-        metrics = {}       # metrics[method][var] = {...}
-        model_series_full = {}   # model_series_full[method][var] = aligned array, for the plot
+        metrics = {}  # metrics[method][var] = {...}
         for method, model_df in model_by_method.items():
             common = model_df.index.intersection(obs.index)
             obs_g = obs.loc[common].values
             metrics[method] = {}
-            model_series_full[method] = {}
             for var in MODEL_VARS:
                 if var not in model_df:
                     continue
                 mod_g = model_df.loc[common, var].values
                 good = np.isfinite(obs_g) & np.isfinite(mod_g)
                 metrics[method][var] = compute_metrics(obs_g[good], mod_g[good])
-                model_series_full[method][var] = model_df[var].reindex(common).values
                 rows.append({'site_id': site_id, 'lake_name': lake['lake_name'], 'method': method,
                              'variable': var, **metrics[method][var]})
-        common_overpass = model_by_method['overpass'].index.intersection(obs.index)
         n_valid = metrics['overpass'].get('TLWML', {}).get('n', 0)
         bias_overpass = metrics['overpass'].get('TLWML', {}).get('bias')
         bias_mean = metrics['daily_mean'].get('TLWML', {}).get('bias')
@@ -362,12 +236,25 @@ def main() -> int:
               + (f', bias(TLWML) overpass={bias_overpass} K vs daily_mean={bias_mean} K'
                  if bias_overpass is not None else ''))
 
-        plot_png = make_plot_png(site_id, lake['lake_name'], common_overpass,
-                                  obs.loc[common_overpass].values, model_series_full['overpass'])
+        # Full time series for the interactive chart: every calendar day the
+        # model ran, obs wherever a retrieval exists (null elsewhere -- obs
+        # coverage is inherently gappy, and a null renders as a gap in
+        # Plotly rather than a false zero or an interpolated line).
+        obs_full = obs.reindex(full_dates)
+        series = {
+            'dates': [d.strftime('%Y-%m-%d') for d in full_dates],
+            'obs': series_to_c(obs_full),
+        }
+        for method, model_df in model_by_method.items():
+            reindexed = model_df.reindex(full_dates)
+            for var in MODEL_VARS:
+                if var in reindexed:
+                    series[f'{method}_{var}'] = series_to_c(reindexed[var])
+
         records.append({
             'site_id': site_id, 'lake_name': lake['lake_name'], 'cci_lake_id': lake['cci_lake_id'],
             'lat': lat, 'lon': lon, 'overpass_utc_hour': round(overpass_hour, 2),
-            'metrics': metrics, 'plot_png': plot_png,
+            'metrics': metrics, 'series': series,
         })
 
     if not records:
@@ -386,13 +273,310 @@ def main() -> int:
     data_json.write_text(json.dumps({
         'generated': pd.Timestamp.now('UTC').strftime('%Y-%m-%dT%H:%M:%SZ'),
         'variables': list(MODEL_VARS),
-        'lakes': [{k: v for k, v in r.items() if k != 'plot_png'} for r in records],
-    }, indent=2))
-    print(f'Wrote {data_json}')
+        'methods': list(METHODS),
+        'lakes': records,
+    }, separators=(',', ':')))
+    print(f'Wrote {data_json} ({data_json.stat().st_size / 1e6:.2f} MB)')
 
     build_dashboard(records, out_dir)
     print(f'Wrote {out_dir / "index.html"}')
     return 0
+
+
+# ---------------------------------------------------------------------------
+# Dashboard: Leaflet world map + a single live Plotly.js chart driven by a
+# lake selector, rather than one static image per lake stacked down the page.
+# Modelled on ifs-riverbench's Workflow/02_build_dashboard.py (map + toolbar
+# + one interactive chart panel).
+# ---------------------------------------------------------------------------
+
+def _bias_color(bias: float | None) -> str:
+    """Green/orange/red by |TLWML overpass bias| -- an at-a-glance quality
+    signal, not a precise scale; the table and chart have the exact numbers."""
+    if bias is None:
+        return '#888888'
+    a = abs(bias)
+    if a < 0.5:
+        return '#2ca02c'
+    if a < 1.5:
+        return '#ff7f0e'
+    return '#d62728'
+
+
+DASHBOARD_TEMPLATE = r"""<!doctype html>
+<html><head><meta charset="utf-8"><title>ifs-lakebench benchmark</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root{--fg:#1f2937;--bg:#f7f7f7;--panel:#ffffff;--border:#d8dbe0;--accent:#1f2937}
+html,body{margin:0;height:100%;font-family:Arial,Helvetica,sans-serif;color:var(--fg);background:var(--bg)}
+header{padding:10px 20px;background:var(--accent);color:#fff}
+header h1{margin:0;font-size:19px}
+header p{margin:3px 0 0;font-size:12.5px;color:#cbd5e1;max-width:80em}
+#toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding:9px 20px;
+         background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
+.tb-group{display:flex;align-items:center;gap:6px}
+.tb-label{font-size:11px;color:#4b5563;text-transform:uppercase;letter-spacing:.04em}
+.tb-btn{font-size:12.5px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);
+        background:#f3f4f6;color:#374151;cursor:pointer}
+.tb-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+#lake-search{font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;min-width:220px}
+#lake-list{position:absolute;background:#fff;border:1px solid var(--border);border-radius:5px;
+           max-height:260px;overflow:auto;z-index:30;box-shadow:0 4px 14px rgba(0,0,0,.12);display:none}
+#lake-list div{padding:5px 10px;font-size:13px;cursor:pointer}
+#lake-list div:hover{background:#eef2ff}
+main{padding:16px 20px;max-width:1400px;margin:0 auto}
+#map{height:380px;border:1px solid var(--border);border-radius:6px;margin-bottom:16px}
+#detail{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:20px}
+#detail h2{margin:0 0 2px;font-size:17px}
+#detail .sub{color:#6b7280;font-size:12.5px;margin-bottom:10px}
+#chart{width:100%;height:420px}
+#stat-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.stat{background:#f3f4f6;border-radius:6px;padding:6px 12px;font-size:12.5px;min-width:110px}
+.stat b{display:block;font-size:16px;color:var(--accent)}
+table{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--border);
+      border-radius:6px;overflow:hidden;font-size:12.5px}
+th,td{padding:6px 10px;text-align:right;border-bottom:1px solid #eee}
+th{background:#f3f4f6;position:sticky;top:0;cursor:pointer;user-select:none}
+td:first-child,th:first-child,td:nth-child(2),th:nth-child(2){text-align:left}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#eef2ff}
+tbody tr.selected{background:#e0e7ff}
+.legend{background:#fff;padding:7px 11px;font-size:12px;line-height:1.7;border-radius:5px;
+        box-shadow:0 0 6px rgba(0,0,0,.3)}
+.legend span{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+h3{margin:26px 0 8px;font-size:14.5px}
+.note{color:#6b7280;font-size:12px}
+</style></head><body>
+<header>
+  <h1>ifs-lakebench: ecLand vs. ESA-CCI-Lakes LSWT</h1>
+  <p>__COUNT__ lakes, 2017-2022. TLWML (FLake mixed-layer temperature) and AvgSurfT (skin temperature)
+  vs. the CCI Lakes LSWT product, spatially averaged over each lake's bounding box. "Overpass" samples
+  the model at the MODIS Terra overpass UTC hour (10:30 local solar time, per lake longitude) instead of
+  a daily mean -- the correct comparison against a polar-orbiter's instantaneous retrieval.</p>
+</header>
+<div id="toolbar">
+  <div class="tb-group">
+    <span class="tb-label">Variable</span>
+    <button class="tb-btn var-btn active" data-var="TLWML">TLWML</button>
+    <button class="tb-btn var-btn" data-var="AvgSurfT">AvgSurfT</button>
+  </div>
+  <div class="tb-group">
+    <span class="tb-label">Method</span>
+    <button class="tb-btn method-btn active" data-method="overpass">Overpass</button>
+    <button class="tb-btn method-btn" data-method="daily_mean">Daily mean</button>
+    <button class="tb-btn method-btn" data-method="both">Both</button>
+  </div>
+  <div class="tb-group" style="position:relative">
+    <span class="tb-label">Lake</span>
+    <input id="lake-search" type="text" placeholder="Search or click the map / table...">
+    <div id="lake-list"></div>
+  </div>
+</div>
+<main>
+  <div id="map"></div>
+  <div id="detail">
+    <h2 id="detail-title">-</h2>
+    <div class="sub" id="detail-sub"></div>
+    <div id="chart"></div>
+    <div id="stat-row"></div>
+  </div>
+  <h3>All lakes</h3>
+  <p class="note">Click a row to select it above. Columns sortable by click. Metrics shown are for the
+  currently selected Variable/Method toolbar choice (daily_mean used when "Both" is selected).</p>
+  <table id="summary">
+    <thead><tr>
+      <th data-key="site_id">Site</th><th data-key="lake_name">Lake</th>
+      <th data-key="n">N days</th><th data-key="bias">Bias (K)</th><th data-key="rmse">RMSE (K)</th>
+      <th data-key="r">r</th><th data-key="nme">NME</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+</main>
+<script>
+const DATA = __DATA_JSON__;
+const LAKES = DATA.lakes;
+const byId = Object.fromEntries(LAKES.map(l => [l.site_id, l]));
+
+let state = { variable: 'TLWML', method: 'overpass', selected: LAKES[0].site_id, sortKey: 'bias', sortDir: 1 };
+
+function metricFor(lake, method, variable) {
+  return (lake.metrics[method] && lake.metrics[method][variable]) || {};
+}
+
+// ---- Map --------------------------------------------------------------
+const map = L.map('map').setView([15, 20], 2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 12, attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+function biasColor(bias) {
+  if (bias === null || bias === undefined) return '#888888';
+  const a = Math.abs(bias);
+  if (a < 0.5) return '#2ca02c';
+  if (a < 1.5) return '#ff7f0e';
+  return '#d62728';
+}
+
+const markers = {};
+LAKES.forEach(l => {
+  const m = L.circleMarker([l.lat, l.lon], { radius: 7, color: '#333', weight: 1, fillOpacity: 0.9 }).addTo(map);
+  m.on('click', () => selectLake(l.site_id));
+  markers[l.site_id] = m;
+});
+
+const legend = L.control({ position: 'bottomright' });
+legend.onAdd = () => {
+  const div = L.DomUtil.create('div', 'legend');
+  div.innerHTML = '<b id="legend-title">Overpass TLWML bias</b><br>' +
+    '<span style="background:#2ca02c"></span>&lt; 0.5 K<br>' +
+    '<span style="background:#ff7f0e"></span>0.5-1.5 K<br>' +
+    '<span style="background:#d62728"></span>&gt; 1.5 K';
+  return div;
+};
+legend.addTo(map);
+
+function refreshMarkers() {
+  const method = state.method === 'both' ? 'overpass' : state.method;
+  LAKES.forEach(l => {
+    const bias = metricFor(l, method, state.variable).bias;
+    markers[l.site_id].setStyle({ fillColor: biasColor(bias) });
+    const txt = bias === null || bias === undefined ? 'n/a' : bias.toFixed(2) + ' K';
+    markers[l.site_id].bindTooltip(`${l.site_id} ${l.lake_name} (${method} ${state.variable} bias ${txt})`);
+  });
+  document.getElementById('legend-title').textContent = `${method === 'overpass' ? 'Overpass' : 'Daily-mean'} ${state.variable} bias`;
+}
+
+// ---- Chart --------------------------------------------------------------
+function traceFor(lake, method, variable, opts) {
+  return Object.assign({
+    x: lake.series.dates, y: lake.series[`${method}_${variable}`],
+    type: 'scatter', mode: 'lines', line: { width: 1.6 },
+  }, opts);
+}
+
+function renderChart() {
+  const lake = byId[state.selected];
+  const traces = [{
+    x: lake.series.dates, y: lake.series.obs, type: 'scatter', mode: 'markers',
+    marker: { size: 3, color: '#111', opacity: 0.55 }, name: 'CCI Lakes LSWT (obs)',
+  }];
+  const colors = { TLWML: '#1f77b4', AvgSurfT: '#d62728' };
+  if (state.method === 'both') {
+    traces.push(traceFor(lake, 'overpass', state.variable, { name: `${state.variable} (overpass)`, line: { color: colors[state.variable], width: 1.8 } }));
+    traces.push(traceFor(lake, 'daily_mean', state.variable, { name: `${state.variable} (daily mean)`, line: { color: colors[state.variable], width: 1, dash: 'dot' } }));
+  } else {
+    traces.push(traceFor(lake, state.method, state.variable, { name: `${state.variable} (${state.method})`, line: { color: colors[state.variable] } }));
+  }
+  const layout = {
+    margin: { t: 10, r: 10, l: 46, b: 30 },
+    yaxis: { title: 'Temperature (°C)' },
+    xaxis: { type: 'date' },
+    legend: { orientation: 'h', y: 1.12 },
+    hovermode: 'x unified',
+  };
+  Plotly.react('chart', traces, layout, { responsive: true, displaylogo: false });
+}
+
+function renderStats() {
+  const lake = byId[state.selected];
+  const method = state.method === 'both' ? 'overpass' : state.method;
+  const m = metricFor(lake, method, state.variable);
+  const cells = [
+    ['N days', m.n ?? '-'],
+    ['Bias (K)', m.bias ?? '-'],
+    ['RMSE (K)', m.rmse ?? '-'],
+    ['r', m.r ?? '-'],
+    ['NME', m.nme ?? '-'],
+    ['Overpass UTC', lake.overpass_utc_hour.toFixed(1) + 'h'],
+  ];
+  document.getElementById('stat-row').innerHTML = cells.map(([label, v]) =>
+    `<div class="stat">${label}<b>${v}</b></div>`).join('');
+}
+
+function selectLake(site_id) {
+  if (!byId[site_id]) return;
+  state.selected = site_id;
+  const lake = byId[site_id];
+  document.getElementById('detail-title').textContent = `${lake.site_id} — ${lake.lake_name}`;
+  document.getElementById('detail-sub').textContent =
+    `${lake.lat.toFixed(3)}, ${lake.lon.toFixed(3)}  |  CCI Lakes id ${lake.cci_lake_id}`;
+  document.getElementById('lake-search').value = `${lake.site_id} ${lake.lake_name}`;
+  document.getElementById('lake-list').style.display = 'none';
+  Object.entries(markers).forEach(([id, m]) => m.setStyle({ weight: id === site_id ? 3 : 1 }));
+  markers[site_id].openTooltip();
+  renderChart();
+  renderStats();
+  renderTable();
+  map.panTo([lake.lat, lake.lon]);
+}
+
+// ---- Toolbar --------------------------------------------------------------
+document.querySelectorAll('.var-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.var-btn').forEach(x => x.classList.toggle('active', x === b));
+  state.variable = b.dataset.var;
+  refreshMarkers(); renderChart(); renderStats(); renderTable();
+}));
+document.querySelectorAll('.method-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.method-btn').forEach(x => x.classList.toggle('active', x === b));
+  state.method = b.dataset.method;
+  refreshMarkers(); renderChart(); renderStats(); renderTable();
+}));
+
+// ---- Lake search dropdown --------------------------------------------------
+const searchInput = document.getElementById('lake-search');
+const lakeList = document.getElementById('lake-list');
+function showMatches(query) {
+  const q = query.trim().toLowerCase();
+  const matches = LAKES.filter(l => !q || l.site_id.toLowerCase().includes(q) || l.lake_name.toLowerCase().includes(q));
+  if (!matches.length) { lakeList.style.display = 'none'; return; }
+  lakeList.innerHTML = matches.slice(0, 30).map(l => `<div data-id="${l.site_id}">${l.site_id} — ${l.lake_name}</div>`).join('');
+  lakeList.querySelectorAll('div').forEach(d => d.addEventListener('click', () => selectLake(d.dataset.id)));
+  lakeList.style.display = 'block';
+}
+searchInput.addEventListener('focus', () => showMatches(searchInput.value));
+searchInput.addEventListener('input', () => showMatches(searchInput.value));
+document.addEventListener('click', e => { if (e.target !== searchInput) lakeList.style.display = 'none'; });
+
+// ---- Summary table ----------------------------------------------------
+function renderTable() {
+  const method = state.method === 'both' ? 'overpass' : state.method;
+  const rows = LAKES.map(l => ({ lake: l, m: metricFor(l, method, state.variable) }));
+  rows.sort((a, b) => {
+    const ka = state.sortKey === 'site_id' || state.sortKey === 'lake_name' ? a.lake[state.sortKey] : a.m[state.sortKey];
+    const kb = state.sortKey === 'site_id' || state.sortKey === 'lake_name' ? b.lake[state.sortKey] : b.m[state.sortKey];
+    if (ka === null || ka === undefined) return 1;
+    if (kb === null || kb === undefined) return -1;
+    return ka > kb ? state.sortDir : ka < kb ? -state.sortDir : 0;
+  });
+  const tbody = document.querySelector('#summary tbody');
+  tbody.innerHTML = rows.map(({ lake, m }) => `
+    <tr data-id="${lake.site_id}" class="${lake.site_id === state.selected ? 'selected' : ''}">
+      <td>${lake.site_id}</td><td>${lake.lake_name}</td>
+      <td>${m.n ?? '-'}</td><td>${m.bias ?? '-'}</td><td>${m.rmse ?? '-'}</td>
+      <td>${m.r ?? '-'}</td><td>${m.nme ?? '-'}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => selectLake(tr.dataset.id)));
+}
+document.querySelectorAll('#summary th[data-key]').forEach(th => th.addEventListener('click', () => {
+  if (state.sortKey === th.dataset.key) state.sortDir *= -1; else { state.sortKey = th.dataset.key; state.sortDir = 1; }
+  renderTable();
+}));
+
+refreshMarkers();
+selectLake(state.selected);
+</script>
+</body></html>
+"""
+
+
+def build_dashboard(records: list[dict], out_dir: Path) -> None:
+    data = {'lakes': records}
+    html = (DASHBOARD_TEMPLATE
+            .replace('__COUNT__', str(len(records)))
+            .replace('__DATA_JSON__', json.dumps(data, separators=(',', ':')).replace('</', '<\\/')))
+    (out_dir / 'index.html').write_text(html, encoding='utf-8')
 
 
 if __name__ == '__main__':

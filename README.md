@@ -203,10 +203,15 @@ was worth keeping. Each variable is scored two ways (see
 `overpass` (the model sampled at the satellite's UTC overpass hour, computed
 per lake from its longitude — the correct comparison, since the obs are an
 instantaneous polar-orbiter retrieval, not a daily average) and `daily_mean`
-(the original method, kept for reference). Writes a metrics CSV, a JSON of
-the aligned series, and a self-contained HTML dashboard (matplotlib PNGs
-embedded inline, no JS charting library, so it opens with no network access)
-to `--out-dir`.
+(the original method, kept for reference). Writes a metrics CSV and an
+interactive HTML dashboard to `--out-dir`: a Leaflet world map plus one live
+Plotly.js chart driven by a lake selector (toolbar toggles for
+variable/method, search box, sortable summary table, click a marker or a
+table row to select a lake) — modelled on `ifs-riverbench`'s dashboard
+(`Workflow/02_build_dashboard.py`: map + toolbar + single chart panel,
+rather than one static image per site stacked down the page). Needs a live
+network connection to load Leaflet/Plotly from their CDNs, unlike the
+matplotlib-PNG version this replaced (2026-09-16) which needed none.
 
 ### Benchmark results (2026-09-14)
 

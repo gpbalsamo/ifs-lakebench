@@ -294,8 +294,13 @@ def move_completed_to_lakes_csv(candidates: list[dict]) -> list[dict]:
 
 def rebuild_dashboard() -> None:
     log("rebuilding postprocessed/ and dashboard")
+    # --overwrite matters: without it, postproc_lake.py silently skips any
+    # lake whose postprocessed/<site>.nc already exists -- which is exactly
+    # every lake that ever failed and got retried (e.g. Ar-001/To-002 after
+    # the landsea=1 fix), leaving the dashboard scoring stale, pre-fix
+    # output. Found 2026-09-16 rebuilding the dashboard by hand.
     subprocess.run(["python3", "scripts/postproc_lake.py",
-                     "--inputdir", "output_spunup", "--outdir", "postprocessed"],
+                     "--inputdir", "output_spunup", "--outdir", "postprocessed", "--overwrite"],
                     cwd=REPO, capture_output=True, text=True)
     subprocess.run(["python3", "scripts/benchmark_lake.py",
                      "--model-dir", "postprocessed",
