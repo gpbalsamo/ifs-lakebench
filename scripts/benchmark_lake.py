@@ -326,18 +326,34 @@ header p{margin:3px 0 0;font-size:12.5px;color:#cbd5e1;max-width:80em}
            max-height:260px;overflow:auto;z-index:30;box-shadow:0 4px 14px rgba(0,0,0,.12);display:none}
 #lake-list div{padding:5px 10px;font-size:13px;cursor:pointer}
 #lake-list div:hover{background:#eef2ff}
-main{padding:16px 20px;max-width:1400px;margin:0 auto}
-#map{height:380px;border:1px solid var(--border);border-radius:6px;margin-bottom:16px}
-#detail{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:20px}
-#detail h2{margin:0 0 2px;font-size:17px}
-#detail .sub{color:#6b7280;font-size:12.5px;margin-bottom:10px}
+
+/* Two stacked split-panes -- map+info, then chart+table -- matching
+   ifs-riverbench's #main-top/#bottom grid layout (Workflow/02_build_dashboard.py),
+   rather than one long single-column scroll. Collapses to a single column
+   below 1100px, same breakpoint philosophy as that dashboard's own
+   @media rules. */
+#main-top{display:block;border-bottom:1px solid var(--border)}
+#map-wrap{height:60vh;min-height:380px;position:relative}
+#map{width:100%;height:100%}
+#info{overflow-y:auto;border-top:1px solid var(--border);padding:14px 16px;background:var(--panel)}
+#info h2{margin:0 0 2px;font-size:17px}
+#info .sub{color:#6b7280;font-size:12.5px;margin-bottom:10px}
+#bottom{display:block}
+#chart-wrap{padding:14px 16px 6px;background:var(--panel);min-height:420px}
 #chart{width:100%;height:420px}
-#stat-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
-.stat{background:#f3f4f6;border-radius:6px;padding:6px 12px;font-size:12.5px;min-width:110px}
-.stat b{display:block;font-size:16px;color:var(--accent)}
-table{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--border);
-      border-radius:6px;overflow:hidden;font-size:12.5px}
-th,td{padding:6px 10px;text-align:right;border-bottom:1px solid #eee}
+#table-wrap{overflow-y:auto;border-top:1px solid var(--border);padding:12px 16px;background:var(--panel)}
+@media (min-width:1100px){
+  #main-top{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(300px,1fr);align-items:stretch}
+  #info{border-top:none;border-left:1px solid var(--border)}
+  #bottom{display:grid;grid-template-columns:minmax(0,1fr) 460px;min-height:460px}
+  #table-wrap{border-top:none;border-left:1px solid var(--border);max-height:calc(460px - 24px)}
+}
+.badge{display:inline-block;background:#f3f4f6;border-radius:6px;padding:6px 12px;font-size:12.5px;
+       min-width:100px;margin:3px 6px 3px 0}
+.badge b{display:block;font-size:16px;color:var(--accent)}
+#stat-row{display:flex;flex-wrap:wrap;margin-top:8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:5px 8px;text-align:right;border-bottom:1px solid #eee}
 th{background:#f3f4f6;position:sticky;top:0;cursor:pointer;user-select:none}
 td:first-child,th:first-child,td:nth-child(2),th:nth-child(2){text-align:left}
 tbody tr{cursor:pointer}
@@ -346,8 +362,7 @@ tbody tr.selected{background:#e0e7ff}
 .legend{background:#fff;padding:7px 11px;font-size:12px;line-height:1.7;border-radius:5px;
         box-shadow:0 0 6px rgba(0,0,0,.3)}
 .legend span{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
-h3{margin:26px 0 8px;font-size:14.5px}
-.note{color:#6b7280;font-size:12px}
+.note{color:#6b7280;font-size:11.5px;margin:0 0 8px}
 </style></head><body>
 <header>
   <h1>ifs-lakebench: ecLand vs. ESA-CCI-Lakes LSWT</h1>
@@ -374,26 +389,29 @@ h3{margin:26px 0 8px;font-size:14.5px}
     <div id="lake-list"></div>
   </div>
 </div>
-<main>
-  <div id="map"></div>
-  <div id="detail">
+<div id="main-top">
+  <div id="map-wrap"><div id="map"></div></div>
+  <div id="info">
     <h2 id="detail-title">-</h2>
     <div class="sub" id="detail-sub"></div>
-    <div id="chart"></div>
     <div id="stat-row"></div>
   </div>
-  <h3>All lakes</h3>
-  <p class="note">Click a row to select it above. Columns sortable by click. Metrics shown are for the
-  currently selected Variable/Method toolbar choice (daily_mean used when "Both" is selected).</p>
-  <table id="summary">
-    <thead><tr>
-      <th data-key="site_id">Site</th><th data-key="lake_name">Lake</th>
-      <th data-key="n">N days</th><th data-key="bias">Bias (K)</th><th data-key="rmse">RMSE (K)</th>
-      <th data-key="r">r</th><th data-key="nme">NME</th>
-    </tr></thead>
-    <tbody></tbody>
-  </table>
-</main>
+</div>
+<div id="bottom">
+  <div id="chart-wrap"><div id="chart"></div></div>
+  <div id="table-wrap">
+    <p class="note">Click a row (or a map marker) to select a lake. Click a column header to sort.
+    Metrics shown match the toolbar's Variable/Method choice (daily_mean used when "Both" is selected).</p>
+    <table id="summary">
+      <thead><tr>
+        <th data-key="site_id">Site</th><th data-key="lake_name">Lake</th>
+        <th data-key="n">N</th><th data-key="bias">Bias</th><th data-key="rmse">RMSE</th>
+        <th data-key="r">r</th><th data-key="nme">NME</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
 <script>
 const DATA = __DATA_JSON__;
 const LAKES = DATA.lakes;
@@ -492,7 +510,7 @@ function renderStats() {
     ['Overpass UTC', lake.overpass_utc_hour.toFixed(1) + 'h'],
   ];
   document.getElementById('stat-row').innerHTML = cells.map(([label, v]) =>
-    `<div class="stat">${label}<b>${v}</b></div>`).join('');
+    `<div class="badge">${label}<b>${v}</b></div>`).join('');
 }
 
 function selectLake(site_id) {
