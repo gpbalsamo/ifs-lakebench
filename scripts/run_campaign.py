@@ -42,7 +42,16 @@ CLIM_DIR = REPO / "clim/CCI_LAKES"
 LOG_PATH = REPO / "scripts/campaign.log"
 YEARS = list(range(2017, 2023))
 
-SUBMIT_CAP = 96  # QOS MaxSubmitPU=100 for account ecrdmocp/nf; small buffer
+# Max extraction jobs (pending + running) this driver keeps in flight. The nf
+# QOS allows 30 running / 100 submitted for account ecrdmocp, shared with the
+# user's own work -- a driver that fills all 30 running slots (as the first
+# campaign did, at 96) makes every other job, however small, wait hours. So
+# the default is deliberately well under 30; override with --max-inflight, or
+# change it live without restarting by writing an integer to
+# scripts/max_inflight (0 pauses new submissions; jobs already queued run on).
+DEFAULT_MAX_INFLIGHT = 20
+MAX_INFLIGHT_FILE = REPO / "scripts/max_inflight"
+SUBMIT_CAP = DEFAULT_MAX_INFLIGHT
 CONVERGED_THRESHOLD = 0.01
 STATUS_ACTIVE = "physiography_done_forcing_extracting"
 
@@ -308,6 +317,14 @@ def rebuild_dashboard() -> None:
                     cwd=REPO, capture_output=True, text=True)
 
 
+def current_cap() -> int:
+    """SUBMIT_CAP, unless scripts/max_inflight holds an integer override."""
+    try:
+        return max(0, int(MAX_INFLIGHT_FILE.read_text().strip()))
+    except (OSError, ValueError):
+        return SUBMIT_CAP
+
+
 def run_once() -> bool:
     """One pass: top up the queue, advance ready lakes. Returns True if any
     STATUS_ACTIVE lake remains (i.e. there's still work to do)."""
@@ -324,8 +341,9 @@ def run_once() -> bool:
                if not forcing_file(row["site_id"], year).exists()
                and job_name_for(row["site_id"], year) not in inflight]
 
+    cap = current_cap()
     n_queued = len(inflight)
-    slots = max(0, SUBMIT_CAP - n_queued)
+    slots = max(0, cap - n_queued)
     submitted = 0
     for row, year in missing[:slots]:
         try:
@@ -334,7 +352,7 @@ def run_once() -> bool:
         except subprocess.CalledProcessError as exc:
             log(f"{row['site_id']} {year}: sbatch submit FAILED: {exc.stderr}")
     if submitted:
-        log(f"submitted {submitted} extraction job(s) (queue was {n_queued}/{SUBMIT_CAP})")
+        log(f"submitted {submitted} extraction job(s) (in flight was {n_queued}/{cap})")
 
     changed = False
     for row in active:
@@ -364,7 +382,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--once", action="store_true", help="Run a single pass and exit (for testing).")
     ap.add_argument("--sleep-seconds", type=int, default=1200)
+    ap.add_argument("--max-inflight", type=int, default=DEFAULT_MAX_INFLIGHT,
+                    help="extraction jobs kept pending+running (default %(default)s); "
+                         "scripts/max_inflight overrides this live")
     args = ap.parse_args()
+    global SUBMIT_CAP
+    SUBMIT_CAP = args.max_inflight
 
     log("=== campaign driver starting ===")
     while True:
