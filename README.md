@@ -661,7 +661,7 @@ cover for that.
 
 **Root cause of the Aral Sea / Rukwa / Rann of Kutch / Tonle Sap blow-ups**, isolated with
 temporary prints in `flakeene_mod.F90` (`retest/patches/0004-flkdbg-diagnostic-prints.patch`,
-driver `retest/debug/dbg_run.sh`, parser `retest/debug/flkparse.py`; Ar-001 restarted from its
+driver `retest/patches/0004-flkdbg-run.sh`, parser `retest/patches/0004-flkdbg-parse.py`; Ar-001 restarted from its
 spun-up state, 2600 steps, raw physiography, `develop` @ `0f3c579`).
 
 `soil_water_flake_port` (now in `develop`) nudges FLake's mean water temperature `T_mnw` towards
