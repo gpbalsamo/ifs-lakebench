@@ -657,6 +657,58 @@ can confirm the fix breaks nothing but cannot confirm what it fixes. A test site
 with `cu > 0` and `LEWBCHECK=.TRUE.` would guard it; FR-Gri already has the
 cover for that.
 
+### Shallow-lake blow-up: the nudging targets the lake's own temperature (2026-09-24)
+
+**Root cause of the Aral Sea / Rukwa / Rann of Kutch / Tonle Sap blow-ups**, isolated with
+temporary prints in `flakeene_mod.F90` (`retest/patches/0004-flkdbg-diagnostic-prints.patch`,
+driver `retest/debug/dbg_run.sh`, parser `retest/debug/flkparse.py`; Ar-001 restarted from its
+spun-up state, 2600 steps, raw physiography, `develop` @ `0f3c579`).
+
+`soil_water_flake_port` (now in `develop`) nudges FLake's mean water temperature `T_mnw` towards
+the soil temperature at level 1 (`PSA(:,1)`), weighted by `exp(-3*(D-2 m))` with `D` floored at
+2 m: full strength (30 min e-folding) for lakes of 2 m or less, 1.6 h at 2.4 m, 10 h at 3 m.
+That is meaningful only if the soil is an independent reservoir. For a **resolved lake point**
+(`landsea < 0.5`, so `LDLAND` false) it is not:
+`surftstp_ctl_mod.F90:988-990` sets `ZTSA(JL,:) = ZTLWML(JL)`, "the lake temperature is put
+into the soil temperature over resolved lakes", and that drives the soil temperature
+tendency. The prints show the nudge target `PSA1` equal to the previous step's `T_wml` to
+every printed digit, so the lake is nudged towards its own mixed-layer temperature.
+
+That is a positive feedback. The nudge pulls `T_mnw` up towards `T_wml`; FLake then rebuilds
+`T_wml` from `T_mnw` through the thermocline shape function, which amplifies the rise, so the
+gap `T_wml - T_mnw` widens every step. The heat the nudge injects per step, against the surface
+heat flux FLake is given (`PQ_W_FLK`, negative = the water is losing heat; steps 2446-2460 are
+hourly steps of April 2017):
+
+| step | `PQ_W_FLK` (W m-2) | heat injected by the nudge step (W m-2) | `T_wml - T_mnw` (K) |
+| --- | --- | --- | --- |
+| 2446 | -155 | 879 | 0.41 |
+| 2454 | -229 | 980 | 1.17 |
+| 2456 | -207 | 3732 | 3.70 |
+| 2458 | -378 | 11289 | 8.14 |
+| 2460 | -1635 | 23752 | 15.30 |
+
+From the same restart, `T_wml` at step 2458: 282.5 K with nudging off, 303.1 K with it on
+(3405 K by 2019). Only lakes of 2.4 m or less blew up because only they carry a large weight.
+
+**`landsea = 1` is not a fix.** It stops the copy, but the soil is then the adiabatic
+constant that a 100 %-lake point leaves it (README, "Fixing it at the source"), so the lake is
+nudged onto a constant instead: Ar-001's `T_wml` sits at 273.77-273.82 K all year, against
+273.2-306.2 K with nudging off. The "recovered" runs of Ar-001, Ru-001, Ra-002 and To-002, and
+Pi-001's frozen result, are that collapse, not a valid simulation. **They need re-running with
+nudging off** (`namelists/namelist_ecland_lake_nonudge`, no rebuild needed).
+
+| Ar-001, same restart | `T_wml` range (K) |
+| --- | --- |
+| raw physiography, nudging off | 273.2 - 306.2, 32 % ice |
+| raw physiography, nudging on | 273.2 - 3405 |
+| `landsea = 1`, nudging on | 273.15 - 273.21 |
+
+Lakes deeper than about 5 m are unaffected (weight below 1e-4). The campaign lakes at 3.0-3.7 m
+(Il-001, Na-001, Ou-001) carry a small residual; the campaign now runs on the no-nudge
+namelist. A proper fix belongs in `flakeene_mod`/`surftstp_ctl_mod`: skip the nudging where
+`PSA` is not an independent soil temperature (resolved lakes, `LDLAND` false).
+
 ## Known issues
 
 **The ecland-master binary you pick matters more than anything in the namelist, and picking the wrong one fails silently.** Confirmed 2026-09-04 on the 10-day Ladoga smoke test: `/perm/pad/ecland-build/bin/ecland-master` (single-precision) runs to completion, writes all expected output files, and reports no error — but every FLake variable in `o_gg.nc` (`AvgSurfT`, `TLMNW`, `TLWML`, `TLBOT`, `HLICE`, `HLML`) jumps to a constant default (288.15 K / 50 m) after the *first* timestep and never moves again, for the entire run. `/perm/pad/ecland/build/bin/ecland-master-dp` (double-precision), run against the byte-identical namelist, forcing and physiography, instead produces a physically evolving lake state (cooling, then freezing, in a January cold snap) — matching an independent reference run (ecland-portal job `20260904T145308_Ld-004`, MARS-forced, 1 day) exactly on the overlapping period. **Use `ecland-master-dp`.** The single-precision build is not merely lower-precision here; something in it silently drops FLake to a fallback state.

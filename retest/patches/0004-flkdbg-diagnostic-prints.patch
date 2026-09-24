@@ -1,0 +1,68 @@
+diff --git a/src/surf/module/flakeene_mod.F90 b/src/surf/module/flakeene_mod.F90
+index f6bb6c7..23ad471 100644
+--- a/src/surf/module/flakeene_mod.F90
++++ b/src/surf/module/flakeene_mod.F90
+@@ -193,6 +193,14 @@ REAL (KIND = JPRB):: ZEPS            ! Small "epsilon" in jprb precision
+ 
+ REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
+ 
++! ---- FLKDBG diagnostics (temporary, ifs-lakebench blow-up hunt) ----
++INTEGER, SAVE :: IDBG_STEP = 0, IDBG_A = 1, IDBG_B = 2147483000
++LOGICAL, SAVE :: LDBG_INIT = .FALSE.
++CHARACTER(LEN=32) :: CDBG
++INTEGER :: IDBG_ST
++REAL(KIND=JPRD) :: ZDBG_TMNW_B
++LOGICAL :: LDBG
++
+ ! Declaration of FLAKE_BOUYPAR function (calculates bouyancy parameter)
+ ZFLAKE_BUOYPAR(ZT_WATER) = YDFLAKE%RTPL_GRAV*YDFLAKE%RTPL_A_T*(ZT_WATER-YDFLAKE%RTPL_T_R)
+ 
+@@ -278,6 +286,21 @@ PT_MNW_N_FLK(JL) = MAX(PT_MNW_N_FLK(JL),RTPL_T_F)
+ PT_BOT_N_FLK(JL) = MAX(PT_BOT_N_FLK(JL),RTPL_T_F)  
+ PT_ICE_N_FLK(JL) = MIN(PT_ICE_N_FLK(JL),RTPL_T_F) 
+ 
++IF (.NOT. LDBG_INIT) THEN
++  LDBG_INIT = .TRUE.
++  CALL GET_ENVIRONMENT_VARIABLE('FLKDBG_A', CDBG, STATUS=IDBG_ST)
++  IF (IDBG_ST == 0) READ(CDBG,*) IDBG_A
++  CALL GET_ENVIRONMENT_VARIABLE('FLKDBG_B', CDBG, STATUS=IDBG_ST)
++  IF (IDBG_ST == 0) READ(CDBG,*) IDBG_B
++ENDIF
++IDBG_STEP = IDBG_STEP + 1
++LDBG = (IDBG_STEP >= IDBG_A .AND. IDBG_STEP <= IDBG_B)
++IF (LDBG) WRITE(*,'(A,I8,20(1X,ES13.6))') 'FLKDBG_E', IDBG_STEP, &
++  & PT_SFC_P(JL), PT_WML_P_FLK(JL), PT_MNW_P_FLK(JL), PT_BOT_P_FLK(JL), PT_ICE_P_FLK(JL), &
++  & PC_T_P_FLK(JL), PH_ML_P_FLK(JL), PH_ICE_P_FLK(JL), PQ_W_FLK(JL), PQ_ICE_FLK(JL), &
++  & PU_STAR_W_FLK(JL), PI_W_FLK(JL), REAL(PSA(JL,1),JPRD), REAL(PSA(JL,2),JPRD), &
++  & REAL(PSA(JL,3),JPRD), REAL(PSA(JL,4),JPRD), ZDEPTH_W(JL), PDEPTH_W(JL)
++
+ !------------------------------------------------------------------------------
+ !  Compute fluxes, using variables from the previous time step.
+ !------------------------------------------------------------------------------
+@@ -464,6 +487,7 @@ PT_MNW_N_FLK(JL) = MAX(PT_MNW_N_FLK(JL), RTPL_T_F)             ! Limit T_mnw by
+ ! Nudge the mean lake temperature to the soil temperature at level 1
+ ! if the lake or inundated water is shallow 
+ ! Weighting function; nudging becomes negligible for deep lakes/inundated waters
++ZDBG_TMNW_B = PT_MNW_N_FLK(JL)
+ ZD_T_MNW_DT = EXP(-TMNW_NDG_RDSCL*(ZDEPTH_W(JL)-RDEPTH_W_MIN))
+ ! Update mean temperature usinf e-folding time scale of 900 s
+ PT_MNW_N_FLK(JL) = PSA(JL,1) + (PT_MNW_N_FLK(JL)-PSA(JL,1))*  &
+@@ -471,6 +495,8 @@ PT_MNW_N_FLK(JL) = PSA(JL,1) + (PT_MNW_N_FLK(JL)-PSA(JL,1))*  &
+ ! Security, limit T_mnw by the freezing point
+ PT_MNW_N_FLK(JL) = MAX(PT_MNW_N_FLK(JL), RTPL_T_F)             
+ 
++IF (LDBG) WRITE(*,'(A,I8,5(1X,ES13.6))') 'FLKDBG_N', IDBG_STEP, ZDBG_TMNW_B, &
++  & REAL(PSA(JL,1),JPRD), PT_MNW_N_FLK(JL), ZD_T_MNW_DT, TMNW_NDG_TIMESCL
+ !_dbg>
+ !IF(JL == 100) THEN
+ !  WRITE(NULOUT,*) 'After Nudging: TMNW_n = ', PT_MNW_N_FLK(JL), '   Tsoil(1) = ', PSA(JL,1)
+@@ -837,6 +863,9 @@ ELSE
+   PT_SFC_N(JL) = PT_WML_N_FLK(JL) ! No ice-snow cover, use the mixed-layer temperature
+ END IF
+ 
++IF (LDBG) WRITE(*,'(A,I8,12(1X,ES13.6))') 'FLKDBG_X', IDBG_STEP, &
++  & PT_SFC_N(JL), PT_WML_N_FLK(JL), PT_MNW_N_FLK(JL), PT_BOT_N_FLK(JL), PT_ICE_N_FLK(JL), &
++  & PC_T_N_FLK(JL), PH_ML_N_FLK(JL), PH_ICE_N_FLK(JL), ZD_H_ML_DT, ZD_C_T_DT, ZFLK_STR_1
+ ENDIF LAKEPOINT
+ 
+ ENDDO MAIN_LOOP
