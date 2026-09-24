@@ -43,26 +43,26 @@ Te-001,Tengiz Lake,overpass,TLWML,1011,-0.2844,3.9495,0.9122,0.4599
 Te-001,Tengiz Lake,overpass,AvgSurfT,1011,-0.575,3.7129,0.9178,0.4084
 Te-001,Tengiz Lake,daily_mean,TLWML,1011,-0.0008,3.9803,0.9134,0.4827
 Te-001,Tengiz Lake,daily_mean,AvgSurfT,1011,-0.0095,3.9637,0.9163,0.4811
-Il-001,Ilmen Lake,overpass,TLWML,963,3.1554,6.7821,0.8755,0.5813
-Il-001,Ilmen Lake,overpass,AvgSurfT,963,3.0638,6.9862,0.8659,0.6294
-Il-001,Ilmen Lake,daily_mean,TLWML,963,3.4163,6.9256,0.8804,0.6061
-Il-001,Ilmen Lake,daily_mean,AvgSurfT,963,3.4198,7.0825,0.8741,0.6467
+Il-001,Ilmen Lake,overpass,TLWML,963,0.0175,1.796,0.9772,0.1882
+Il-001,Ilmen Lake,overpass,AvgSurfT,963,-0.1045,2.7664,0.9436,0.2532
+Il-001,Ilmen Lake,daily_mean,TLWML,963,0.3482,1.8908,0.9781,0.2015
+Il-001,Ilmen Lake,daily_mean,AvgSurfT,963,0.4559,2.6695,0.953,0.2582
 Ha-001,Habbaniyah Lake,overpass,TLWML,1623,0.2774,1.4245,0.9815,0.1761
 Ha-001,Habbaniyah Lake,overpass,AvgSurfT,1623,-0.0258,1.3118,0.9849,0.1585
 Ha-001,Habbaniyah Lake,daily_mean,TLWML,1624,0.5003,1.3722,0.9845,0.1678
 Ha-001,Habbaniyah Lake,daily_mean,AvgSurfT,1624,0.4983,1.3607,0.9848,0.1662
-Na-001,Natron Lake,overpass,TLWML,532,2.9751,4.3736,0.3543,1.4124
-Na-001,Natron Lake,overpass,AvgSurfT,532,2.809,4.2537,0.3529,1.3668
-Na-001,Natron Lake,daily_mean,TLWML,532,3.5791,4.8386,0.3532,1.594
-Na-001,Natron Lake,daily_mean,AvgSurfT,532,3.576,4.8366,0.353,1.5932
+Na-001,Natron Lake,overpass,TLWML,532,-0.5835,2.1888,0.7742,0.6931
+Na-001,Natron Lake,overpass,AvgSurfT,532,-0.7989,2.2648,0.7753,0.7161
+Na-001,Natron Lake,daily_mean,TLWML,532,-0.0112,2.1009,0.7683,0.6724
+Na-001,Natron Lake,daily_mean,AvgSurfT,532,-0.0127,2.1013,0.7683,0.6726
 To-001,Lake Toshka Lakes,overpass,TLWML,1650,-1.0374,1.8594,0.9565,0.3643
 To-001,Lake Toshka Lakes,overpass,AvgSurfT,1650,-1.5167,2.0348,0.9611,0.4106
 To-001,Lake Toshka Lakes,daily_mean,TLWML,1651,-0.2589,1.7053,0.9503,0.3256
 To-001,Lake Toshka Lakes,daily_mean,AvgSurfT,1651,-0.2628,1.695,0.9509,0.3233
-Ou-001,Oulujarvi Lake,overpass,TLWML,807,4.5717,7.0172,0.9472,1.1222
-Ou-001,Oulujarvi Lake,overpass,AvgSurfT,807,4.6165,6.9105,0.9373,1.1084
-Ou-001,Oulujarvi Lake,daily_mean,TLWML,807,4.7334,7.161,0.9485,1.1478
-Ou-001,Oulujarvi Lake,daily_mean,AvgSurfT,807,4.9016,7.2084,0.9432,1.1675
+Ou-001,Oulujarvi Lake,overpass,TLWML,807,0.4108,2.963,0.9462,0.4528
+Ou-001,Oulujarvi Lake,overpass,AvgSurfT,807,0.4983,3.0608,0.9237,0.4501
+Ou-001,Oulujarvi Lake,daily_mean,TLWML,807,0.5292,2.9338,0.95,0.4468
+Ou-001,Oulujarvi Lake,daily_mean,AvgSurfT,807,0.7239,3.1356,0.9331,0.474
 Tu-001,Turkana Lake,overpass,TLWML,605,-0.3167,1.1863,0.4407,1.0058
 Tu-001,Turkana Lake,overpass,AvgSurfT,605,-0.3361,1.1889,0.4409,1.0088
 Tu-001,Turkana Lake,daily_mean,TLWML,606,-0.1188,1.1854,0.4331,1.0106
@@ -75,19 +75,23 @@ Ma-001,Malawi Lake,overpass,TLWML,725,0.0593,1.031,0.8618,0.7354
 Ma-001,Malawi Lake,overpass,AvgSurfT,725,-0.1514,0.9808,0.8634,0.7062
 Ma-001,Malawi Lake,daily_mean,TLWML,725,0.2716,1.0576,0.8715,0.7593
 Ma-001,Malawi Lake,daily_mean,AvgSurfT,725,0.271,1.0563,0.8717,0.7586
-Ru-001,Rukwa Lake,overpass,TLWML,706,5.6512,5.8551,0.7651,4.5787
-Ru-001,Rukwa Lake,overpass,AvgSurfT,706,5.6372,5.8417,0.7413,4.5674
-Ru-001,Rukwa Lake,daily_mean,TLWML,706,5.6297,5.8355,0.7175,4.5613
-Ru-001,Rukwa Lake,daily_mean,AvgSurfT,706,5.6297,5.8355,0.7201,4.5613
-Ra-002,Rann Of Kutch Lake,overpass,TLWML,1285,0.7322,4.9152,0.3411,0.9922
-Ra-002,Rann Of Kutch Lake,overpass,AvgSurfT,1285,0.7119,4.9201,0.3721,0.994
-Ra-002,Rann Of Kutch Lake,daily_mean,TLWML,1286,0.7087,4.9221,0.301,0.9933
-Ra-002,Rann Of Kutch Lake,daily_mean,AvgSurfT,1286,0.7088,4.922,0.3011,0.9933
-To-002,Tonle Sap Lake,overpass,TLWML,134,-2.5386,2.9072,0.4538,2.2149
-To-002,Tonle Sap Lake,overpass,AvgSurfT,134,-2.5689,2.9413,0.45,2.2402
-To-002,Tonle Sap Lake,daily_mean,TLWML,134,-2.575,2.9448,0.4504,2.2448
-To-002,Tonle Sap Lake,daily_mean,AvgSurfT,134,-2.575,2.9449,0.4508,2.2448
-Ar-001,Aral Sea,overpass,TLWML,1754,-14.2775,17.105,0.8715,1.6918
-Ar-001,Aral Sea,overpass,AvgSurfT,1754,-12.574,16.9842,-0.1199,1.7001
-Ar-001,Aral Sea,daily_mean,TLWML,1755,-14.2811,17.1154,0.8747,1.6915
-Ar-001,Aral Sea,daily_mean,AvgSurfT,1755,-12.259,16.6131,-0.1757,1.6198
+Ru-001,Rukwa Lake,overpass,TLWML,706,-0.1922,1.183,0.8639,0.7925
+Ru-001,Rukwa Lake,overpass,AvgSurfT,706,-0.3784,1.2007,0.865,0.7893
+Ru-001,Rukwa Lake,daily_mean,TLWML,706,0.42,1.2555,0.8572,0.8385
+Ru-001,Rukwa Lake,daily_mean,AvgSurfT,706,0.4204,1.2544,0.8577,0.8376
+Ra-002,Rann Of Kutch Lake,overpass,TLWML,1285,-0.7616,1.5158,0.965,0.27
+Ra-002,Rann Of Kutch Lake,overpass,AvgSurfT,1285,-1.2489,1.8727,0.9625,0.3452
+Ra-002,Rann Of Kutch Lake,daily_mean,TLWML,1286,-0.0791,1.3531,0.963,0.2372
+Ra-002,Rann Of Kutch Lake,daily_mean,AvgSurfT,1286,-0.0793,1.3534,0.963,0.2374
+To-002,Tonle Sap Lake,overpass,TLWML,134,0.6994,1.3659,0.7306,0.9959
+To-002,Tonle Sap Lake,overpass,AvgSurfT,134,0.2482,1.1292,0.7494,0.7908
+To-002,Tonle Sap Lake,daily_mean,TLWML,134,1.28,1.8155,0.667,1.389
+To-002,Tonle Sap Lake,daily_mean,AvgSurfT,134,1.2757,1.8088,0.6698,1.3835
+Ar-001,Aral Sea,overpass,TLWML,1754,-0.5492,1.9727,0.983,0.175
+Ar-001,Aral Sea,overpass,AvgSurfT,1754,-0.9524,2.7911,0.9693,0.233
+Ar-001,Aral Sea,daily_mean,TLWML,1755,-0.3493,1.9682,0.9831,0.174
+Ar-001,Aral Sea,daily_mean,AvgSurfT,1755,-0.5872,2.6744,0.9731,0.2293
+Pi-001,Pielinen Lake,overpass,TLWML,805,0.5477,3.1187,0.9395,0.4702
+Pi-001,Pielinen Lake,overpass,AvgSurfT,805,0.552,3.1981,0.9197,0.4705
+Pi-001,Pielinen Lake,daily_mean,TLWML,805,0.6438,3.1039,0.9414,0.4706
+Pi-001,Pielinen Lake,daily_mean,AvgSurfT,805,0.787,3.3035,0.9273,0.4997

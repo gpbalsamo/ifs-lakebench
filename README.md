@@ -695,8 +695,24 @@ From the same restart, `T_wml` at step 2458: 282.5 K with nudging off, 303.1 K w
 constant that a 100 %-lake point leaves it (README, "Fixing it at the source"), so the lake is
 nudged onto a constant instead: Ar-001's `T_wml` sits at 273.77-273.82 K all year, against
 273.2-306.2 K with nudging off. The "recovered" runs of Ar-001, Ru-001, Ra-002 and To-002, and
-Pi-001's frozen result, are that collapse, not a valid simulation. **They need re-running with
-nudging off** (`namelists/namelist_ecland_lake_nonudge`, no rebuild needed).
+Pi-001's frozen result, are that collapse, not a valid simulation.
+
+**Re-run 2026-09-24** (`scripts/rerun_lakes.py`, `namelists/namelist_ecland_lake_nonudge`, raw
+portal physiography, frozen `bundle-control` binary): those five lakes plus Il-001, Na-001 and
+Ou-001 (3.0-3.7 m, small residual nudging) now show real seasonal cycles, and Pi-001 completes
+(24 lakes in `sites/lakes.csv`, none failed). The observations agree with the diagnosis; the
+overpass-sampled `TLWML` bias against CCI Lakes LSWT (K), before -> after:
+
+| lake | before | after |
+| --- | --- | --- |
+| Ar-001 Aral Sea | -14.28 | -0.55 |
+| Ru-001 Rukwa | +5.65 | -0.19 |
+| Il-001 Ilmen | +3.16 | +0.02 |
+| Na-001 Natron | +2.98 | -0.58 |
+| Ou-001 Oulujarvi | +4.57 | +0.41 |
+| Ra-002 Rann of Kutch | +0.73 | -0.76 |
+| To-002 Tonle Sap | -2.54 | +0.70 |
+| Pi-001 Pielinen | (frozen, excluded) | +0.55 |
 
 | Ar-001, same restart | `T_wml` range (K) |
 | --- | --- |
