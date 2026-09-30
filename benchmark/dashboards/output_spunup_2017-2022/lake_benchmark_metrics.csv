@@ -187,3 +187,63 @@ Lo-001,Lokka Reservoir,overpass,TLWML,590,-0.6208,3.4556,0.8764,0.5709
 Lo-001,Lokka Reservoir,overpass,AvgSurfT,590,-0.5203,3.3223,0.8743,0.5469
 Lo-001,Lokka Reservoir,daily_mean,TLWML,590,-0.4939,3.4242,0.8806,0.5694
 Lo-001,Lokka Reservoir,daily_mean,AvgSurfT,590,-0.347,3.288,0.8828,0.5518
+Ma-002,Manyara Lake,overpass,TLWML,517,-0.1103,1.6675,0.8329,0.5054
+Ma-002,Manyara Lake,overpass,AvgSurfT,517,-0.3441,1.7237,0.8293,0.5147
+Ma-002,Manyara Lake,daily_mean,TLWML,517,0.4206,1.7084,0.8319,0.5498
+Ma-002,Manyara Lake,daily_mean,AvgSurfT,517,0.4182,1.7091,0.8315,0.55
+Ka-003,Kallavesi Lake,overpass,TLWML,687,0.0184,3.0171,0.9469,0.4032
+Ka-003,Kallavesi Lake,overpass,AvgSurfT,687,0.0323,2.827,0.9473,0.3749
+Ka-003,Kallavesi Lake,daily_mean,TLWML,687,0.0529,2.9783,0.9483,0.3993
+Ka-003,Kallavesi Lake,daily_mean,AvgSurfT,687,0.2561,2.6579,0.9599,0.3808
+Pu-001,Puula Lake,overpass,TLWML,650,0.7491,3.2345,0.9455,0.4686
+Pu-001,Puula Lake,overpass,AvgSurfT,650,0.5006,3.1011,0.9426,0.4392
+Pu-001,Puula Lake,daily_mean,TLWML,650,0.8554,3.2417,0.9464,0.4762
+Pu-001,Puula Lake,daily_mean,AvgSurfT,650,0.8512,3.3319,0.944,0.4946
+Um-001,Umbozero Lake,overpass,TLWML,688,0.8103,2.8465,0.9535,0.6195
+Um-001,Umbozero Lake,overpass,AvgSurfT,688,0.9006,3.0148,0.931,0.6378
+Um-001,Umbozero Lake,daily_mean,TLWML,688,0.8798,2.8825,0.9541,0.6298
+Um-001,Umbozero Lake,daily_mean,AvgSurfT,688,1.0523,3.0939,0.9338,0.6637
+Ho-001,Hoytiainen Lake,overpass,TLWML,673,0.5044,3.0784,0.9552,0.4735
+Ho-001,Hoytiainen Lake,overpass,AvgSurfT,673,0.564,2.95,0.9486,0.4447
+Ho-001,Hoytiainen Lake,daily_mean,TLWML,673,0.5123,3.0345,0.9562,0.4685
+Ho-001,Hoytiainen Lake,daily_mean,AvgSurfT,673,0.6969,2.9066,0.9578,0.4575
+Ya-001,Yanisyarvi Lake,overpass,TLWML,669,0.0614,2.737,0.9597,0.377
+Ya-001,Yanisyarvi Lake,overpass,AvgSurfT,669,0.0282,2.712,0.9536,0.367
+Ya-001,Yanisyarvi Lake,daily_mean,TLWML,669,0.1787,2.7153,0.9619,0.3822
+Ya-001,Yanisyarvi Lake,daily_mean,AvgSurfT,669,0.3297,2.7121,0.9592,0.3884
+Ma-003,Malye Chany Lake,overpass,TLWML,682,-0.2127,3.1932,0.9301,0.3354
+Ma-003,Malye Chany Lake,overpass,AvgSurfT,682,-0.3832,3.1267,0.9229,0.3143
+Ma-003,Malye Chany Lake,daily_mean,TLWML,682,0.1244,3.2163,0.9326,0.3595
+Ma-003,Malye Chany Lake,daily_mean,AvgSurfT,682,0.2322,3.2897,0.9254,0.3697
+Ni-001,Nilakka Lake,overpass,TLWML,592,-0.0785,3.0225,0.9311,0.4135
+Ni-001,Nilakka Lake,overpass,AvgSurfT,592,-0.0026,2.7817,0.9321,0.3753
+Ni-001,Nilakka Lake,daily_mean,TLWML,592,-0.0285,2.9647,0.9336,0.4026
+Ni-001,Nilakka Lake,daily_mean,AvgSurfT,592,0.1865,2.6426,0.9442,0.3747
+Va-001,Vanajavesi Lake,overpass,TLWML,676,0.2113,3.2919,0.9528,0.4536
+Va-001,Vanajavesi Lake,overpass,AvgSurfT,676,-0.0076,3.3187,0.9407,0.4485
+Va-001,Vanajavesi Lake,daily_mean,TLWML,676,0.354,3.2986,0.9546,0.4622
+Va-001,Vanajavesi Lake,daily_mean,AvgSurfT,676,0.4275,3.5676,0.9432,0.501
+La-001,Lappajarvi Lake,overpass,TLWML,676,0.1314,3.3824,0.9326,0.4634
+La-001,Lappajarvi Lake,overpass,AvgSurfT,676,0.0229,3.1534,0.9369,0.429
+La-001,Lappajarvi Lake,daily_mean,TLWML,676,0.2318,3.3802,0.9346,0.4676
+La-001,Lappajarvi Lake,daily_mean,AvgSurfT,676,0.2959,3.24,0.9431,0.4634
+Fi-001,Fitri Lake,overpass,TLWML,874,1.5793,1.9985,0.9471,0.5518
+Fi-001,Fitri Lake,overpass,AvgSurfT,874,1.2508,1.8052,0.9452,0.4862
+Fi-001,Fitri Lake,daily_mean,TLWML,874,2.5716,2.8314,0.9484,0.8295
+Fi-001,Fitri Lake,daily_mean,AvgSurfT,874,2.5707,2.8315,0.9482,0.8293
+Vu-001,Vuohijarvi Lake,overpass,TLWML,574,0.786,3.2149,0.9473,0.4761
+Vu-001,Vuohijarvi Lake,overpass,AvgSurfT,574,0.6875,3.2014,0.9337,0.4609
+Vu-001,Vuohijarvi Lake,daily_mean,TLWML,574,0.8822,3.2446,0.947,0.4832
+Vu-001,Vuohijarvi Lake,daily_mean,AvgSurfT,574,1.0685,3.436,0.9359,0.5134
+Su-001,Sua Pan Lake,overpass,TLWML,1377,0.2517,1.7531,0.9372,0.3348
+Su-001,Sua Pan Lake,overpass,AvgSurfT,1377,-0.2654,1.887,0.9355,0.3387
+Su-001,Sua Pan Lake,daily_mean,TLWML,1377,0.8208,1.8763,0.94,0.382
+Su-001,Sua Pan Lake,daily_mean,AvgSurfT,1377,0.8178,1.879,0.9396,0.3822
+Et-001,Etosha Pan Lake,overpass,TLWML,549,1.4014,2.0716,0.9384,0.486
+Et-001,Etosha Pan Lake,overpass,AvgSurfT,549,1.1988,1.9845,0.9367,0.4599
+Et-001,Etosha Pan Lake,daily_mean,TLWML,549,2.1104,2.5802,0.9379,0.6289
+Et-001,Etosha Pan Lake,daily_mean,AvgSurfT,549,2.1112,2.5833,0.9375,0.6295
+Tu-002,Tuz Lake,overpass,TLWML,1677,-0.37,2.1359,0.972,0.2241
+Tu-002,Tuz Lake,overpass,AvgSurfT,1677,-0.6479,2.4195,0.9679,0.2545
+Tu-002,Tuz Lake,daily_mean,TLWML,1678,0.1961,1.975,0.9747,0.1986
+Tu-002,Tuz Lake,daily_mean,AvgSurfT,1678,0.2659,2.0553,0.9732,0.2036
