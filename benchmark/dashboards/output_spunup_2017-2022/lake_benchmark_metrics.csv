@@ -247,3 +247,63 @@ Tu-002,Tuz Lake,overpass,TLWML,1677,-0.37,2.1359,0.972,0.2241
 Tu-002,Tuz Lake,overpass,AvgSurfT,1677,-0.6479,2.4195,0.9679,0.2545
 Tu-002,Tuz Lake,daily_mean,TLWML,1678,0.1961,1.975,0.9747,0.1986
 Tu-002,Tuz Lake,daily_mean,AvgSurfT,1678,0.2659,2.0553,0.9732,0.2036
+Ko-001,Koitere Lake,overpass,TLWML,596,-0.5977,3.4836,0.906,0.4724
+Ko-001,Koitere Lake,overpass,AvgSurfT,596,-0.6485,3.3273,0.9064,0.45
+Ko-001,Koitere Lake,daily_mean,TLWML,596,-0.4677,3.4365,0.9092,0.4729
+Ko-001,Koitere Lake,daily_mean,AvgSurfT,596,-0.2956,3.1489,0.9192,0.4492
+Ro-002,Roine Lake (also covers Mallasvesi Lake),overpass,TLWML,704,0.4052,3.0226,0.9571,0.4159
+Ro-002,Roine Lake (also covers Mallasvesi Lake),overpass,AvgSurfT,704,0.2412,2.9158,0.9504,0.3962
+Ro-002,Roine Lake (also covers Mallasvesi Lake),daily_mean,TLWML,704,0.5294,3.0202,0.9588,0.422
+Ro-002,Roine Lake (also covers Mallasvesi Lake),daily_mean,AvgSurfT,704,0.6196,3.1754,0.9515,0.4464
+Su-002,Sulunga Lake,overpass,TLWML,710,-0.6822,1.4918,0.8866,0.4604
+Su-002,Sulunga Lake,overpass,AvgSurfT,710,-0.9522,1.6772,0.8825,0.5295
+Su-002,Sulunga Lake,daily_mean,TLWML,710,-0.2852,1.3209,0.8908,0.4029
+Su-002,Sulunga Lake,daily_mean,AvgSurfT,710,-0.2864,1.3233,0.8904,0.4036
+Mi-001,Miekojarvi Lake,overpass,TLWML,506,-0.9267,4.2456,0.8972,0.673
+Mi-001,Miekojarvi Lake,overpass,AvgSurfT,506,-0.878,4.1163,0.8781,0.6482
+Mi-001,Miekojarvi Lake,daily_mean,TLWML,506,-0.7776,4.238,0.8996,0.6806
+Mi-001,Miekojarvi Lake,daily_mean,AvgSurfT,506,-0.5326,4.1666,0.8855,0.6844
+Ko-002,Kostonjarvi Lake,overpass,TLWML,476,-0.3626,3.9768,0.8794,0.6338
+Ko-002,Kostonjarvi Lake,overpass,AvgSurfT,476,-0.2073,3.5439,0.8879,0.5595
+Ko-002,Kostonjarvi Lake,daily_mean,TLWML,476,-0.2888,3.9465,0.8819,0.6333
+Ko-002,Kostonjarvi Lake,daily_mean,AvgSurfT,476,-0.0453,3.557,0.8971,0.5826
+Nu-001,Nuasjarvi Lake,overpass,TLWML,609,-0.7069,3.7865,0.8926,0.542
+Nu-001,Nuasjarvi Lake,overpass,AvgSurfT,609,-0.8086,3.6494,0.897,0.5145
+Nu-001,Nuasjarvi Lake,daily_mean,TLWML,609,-0.6827,3.7449,0.8942,0.5348
+Nu-001,Nuasjarvi Lake,daily_mean,AvgSurfT,609,-0.6963,3.7096,0.9003,0.5378
+Zz-001,Zzzz Lake,overpass,TLWML,482,-0.3278,3.5981,0.8991,0.5541
+Zz-001,Zzzz Lake,overpass,AvgSurfT,482,-0.3585,3.426,0.899,0.5177
+Zz-001,Zzzz Lake,daily_mean,TLWML,482,-0.2976,3.5537,0.901,0.5496
+Zz-001,Zzzz Lake,daily_mean,AvgSurfT,482,-0.2284,3.4661,0.9036,0.5429
+Al-001,Alvajarvi Lake,overpass,TLWML,481,-0.3529,3.5886,0.9146,0.4763
+Al-001,Alvajarvi Lake,overpass,AvgSurfT,481,-0.5059,3.3769,0.919,0.4364
+Al-001,Alvajarvi Lake,daily_mean,TLWML,481,-0.3048,3.5535,0.916,0.4742
+Al-001,Alvajarvi Lake,daily_mean,AvgSurfT,481,-0.291,3.5013,0.9206,0.4722
+Py-002,Pyhajarvi2 Lake,overpass,TLWML,505,-0.3657,3.2777,0.9245,0.4265
+Py-002,Pyhajarvi2 Lake,overpass,AvgSurfT,505,-0.2765,2.8942,0.9333,0.3822
+Py-002,Pyhajarvi2 Lake,daily_mean,TLWML,505,-0.3262,3.2336,0.926,0.4197
+Py-002,Pyhajarvi2 Lake,daily_mean,AvgSurfT,505,-0.1053,2.8851,0.9376,0.3958
+Ka-004,Kangasjarvi Lake,overpass,TLWML,414,-0.5224,3.9069,0.8958,0.4552
+Ka-004,Kangasjarvi Lake,overpass,AvgSurfT,414,-0.666,3.7297,0.8988,0.4275
+Ka-004,Kangasjarvi Lake,daily_mean,TLWML,414,-0.5028,3.8414,0.8974,0.4436
+Ka-004,Kangasjarvi Lake,daily_mean,AvgSurfT,414,-0.4685,3.698,0.9079,0.4364
+Py-003,Pyhajarvi Lake,overpass,TLWML,562,0.3499,3.3317,0.9551,0.4612
+Py-003,Pyhajarvi Lake,overpass,AvgSurfT,562,0.1192,3.5009,0.9353,0.4661
+Py-003,Pyhajarvi Lake,daily_mean,TLWML,562,0.4655,3.3287,0.9567,0.4663
+Py-003,Pyhajarvi Lake,daily_mean,AvgSurfT,562,0.5043,3.7197,0.9398,0.5201
+Ur-002,Urajarvi Lake,overpass,TLWML,442,-0.2727,3.3969,0.9469,0.4265
+Ur-002,Urajarvi Lake,overpass,AvgSurfT,442,-0.4917,3.2462,0.9456,0.3908
+Ur-002,Urajarvi Lake,daily_mean,TLWML,442,-0.2305,3.319,0.9488,0.4183
+Ur-002,Urajarvi Lake,daily_mean,AvgSurfT,442,-0.2487,3.4788,0.9456,0.4372
+To-003,Torrens Lake,overpass,TLWML,701,-0.3475,2.2333,0.9449,0.3039
+To-003,Torrens Lake,overpass,AvgSurfT,701,-0.5784,2.3589,0.9422,0.3179
+To-003,Torrens Lake,daily_mean,TLWML,701,0.2385,2.026,0.9529,0.2907
+To-003,Torrens Lake,daily_mean,AvgSurfT,701,0.2368,2.0332,0.9525,0.2915
+Ga-002,Gairdner Lake,overpass,TLWML,1192,0.0579,2.1902,0.944,0.3319
+Ga-002,Gairdner Lake,overpass,AvgSurfT,1192,-0.1333,2.2688,0.9421,0.3415
+Ga-002,Gairdner Lake,daily_mean,TLWML,1192,0.6452,2.0292,0.9543,0.3174
+Ga-002,Gairdner Lake,daily_mean,AvgSurfT,1192,0.6408,2.0364,0.9538,0.3184
+Sa-001,Salinas Grandes Lake,overpass,TLWML,986,0.7201,2.2562,0.9579,0.2985
+Sa-001,Salinas Grandes Lake,overpass,AvgSurfT,986,0.4504,2.2726,0.9556,0.3018
+Sa-001,Salinas Grandes Lake,daily_mean,TLWML,986,1.0501,2.3948,0.9564,0.3187
+Sa-001,Salinas Grandes Lake,daily_mean,AvgSurfT,986,1.043,2.411,0.9554,0.321
