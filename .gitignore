@@ -6,6 +6,13 @@ output/*
 # output_spunup/ etc.: an ad-hoc comparison output dir alongside output/,
 # same convention as output/ itself -- not checked in.
 output_spunup/
+# Provisional / per-build run trees (scripts/provisional/run_one.sh) and their
+# postprocessed files and model-dir symlink farms -- regenerable, not checked in.
+output_prov*/
+output_spunup_*/
+postprocessed_*/
+scripts/work_prov*/
+scripts/provisional/model_*/
 # retest/<variant>/: one run tree per non-default ecLand build (see README,
 # "Re-running against a different ecLand build"). The driver, lake list and
 # any source patches under retest/ are checked in; the run trees are not.

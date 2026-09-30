@@ -282,6 +282,33 @@ Obs coverage is uneven and sometimes low (Br-001 and Ky-001 have well under
 half of the 6-year period, since satellite LSWT retrieval is cloud-limited)
 — treat n < ~500 days as a lower-confidence score, not a wider bias.
 
+### Provisional runs on partial forcing (2026-09-29)
+
+To show all candidate lakes on the dashboard before their 2022 forcing had
+landed, `scripts/run_lake_pipeline.sh` takes `END_YEAR` (default 2022) and
+writes a shorter run under `<SITE>_2017-<END_YEAR>` names.
+`scripts/provisional/run_one.sh SITE LAT LON NLOOP` runs one lake that way
+into its own `output_prov<TAG>_<period>/` and `output_spunup<TAG>_<period>/`
+trees (`BUILD` picks a bundle under `/perm/pad/ecland-lakebench-builds`,
+`TAG` keeps each build's runs apart), always with
+`namelist_ecland_lake_nonudge`; `scripts/provisional/build_dashboard.sh`
+scores them together with the finished lakes into
+`benchmark/dashboards/provisional<TAG>_<period>/`, flagging the short runs
+"provisional" (`benchmark_lake.py --period` sets the header text). None of
+it touches what the campaign driver reads or writes.
+
+The published provisional dashboard (https://sites.ecmwf.int/pad/lakebench/provisional/)
+is `provisional_develop_2017-2020`: 75 candidate lakes over 2017-2020 and
+the 24 then-finished lakes re-run over 2017-2022, all on a frozen build of
+`develop` at 0d07a86 (`bundle-develop`) with the nudging off. On develop the
+nudging still blows up the Aral Sea (TLWML to 3405 K with
+`namelist_ecland_lake_ctl`, 273-306 K with the nonudge namelist). With the
+nudging off, develop reproduces the recorded `output_spunup/` exactly for 21
+of the 24 lakes; Ur-001, Te-001 and To-001 differ by up to 2.6, 4.0 and
+0.75 K in TLWML (overpass bias -0.20 -> -0.29, -0.28 -> -0.51, -1.04 ->
+-1.04 K), most likely because their recorded runs predate the nonudge
+re-runs and still carry the weak nudging at 5-6 m depth.
+
 ## Namelists
 
 `namelists/namelist_ecland_lake_ctl` is plumber2-ecland's `namelist_ecland_50R1_ctl`, unchanged except for the model id string. `LEFLAKE=.TRUE.` was already on in the source namelist: FLake runs at any grid point with lake fraction, land run or not. `LWRLKE` is left `.FALSE.` — see [Known issues](#known-issues) for why, and for where lake state actually comes from instead (`o_gg.nc`, not `o_lke.nc`).
