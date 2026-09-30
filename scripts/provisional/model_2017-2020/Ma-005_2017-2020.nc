@@ -1,0 +1,1 @@
+/etc/ecmwf/nfs/dh2_perm_a/pad/ifs-lakebench/postprocessed_2017-2020/Ma-005_2017-2020.nc

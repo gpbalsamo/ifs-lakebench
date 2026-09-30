@@ -171,6 +171,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument('--lakes-csv', type=Path, default=DEFAULT_LAKES_CSV)
     p.add_argument('--out-dir', type=Path, default=DEFAULT_OUT_DIR)
     p.add_argument('--site', action='append', default=None, help='Optional site_id filter; repeatable.')
+    p.add_argument('--period', default='2017-2022',
+                   help='Period text for the dashboard header, e.g. when some lakes are provisional shorter runs.')
     return p.parse_args()
 
 
@@ -278,7 +280,7 @@ def main() -> int:
     }, separators=(',', ':')))
     print(f'Wrote {data_json} ({data_json.stat().st_size / 1e6:.2f} MB)')
 
-    build_dashboard(records, out_dir)
+    build_dashboard(records, out_dir, args.period)
     print(f'Wrote {out_dir / "index.html"}')
     return 0
 
@@ -366,7 +368,7 @@ tbody tr.selected{background:#e0e7ff}
 </style></head><body>
 <header>
   <h1>ifs-lakebench: ecLand vs. ESA-CCI-Lakes LSWT</h1>
-  <p>__COUNT__ lakes, 2017-2022. TLWML (FLake mixed-layer temperature) and AvgSurfT (skin temperature)
+  <p>__COUNT__ lakes, __PERIOD__. TLWML (FLake mixed-layer temperature) and AvgSurfT (skin temperature)
   vs. the CCI Lakes LSWT product, spatially averaged over each lake's bounding box. "Overpass" samples
   the model at the MODIS Terra overpass UTC hour (10:30 local solar time, per lake longitude) instead of
   a daily mean -- the correct comparison against a polar-orbiter's instantaneous retrieval.</p>
@@ -589,10 +591,11 @@ selectLake(state.selected);
 """
 
 
-def build_dashboard(records: list[dict], out_dir: Path) -> None:
+def build_dashboard(records: list[dict], out_dir: Path, period: str) -> None:
     data = {'lakes': records}
     html = (DASHBOARD_TEMPLATE
             .replace('__COUNT__', str(len(records)))
+            .replace('__PERIOD__', period)
             .replace('__DATA_JSON__', json.dumps(data, separators=(',', ':')).replace('</', '<\\/')))
     (out_dir / 'index.html').write_text(html, encoding='utf-8')
 

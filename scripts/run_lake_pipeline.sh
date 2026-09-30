@@ -64,17 +64,23 @@ WORK_DIR="${WORK_DIR:-${REPO_ROOT}/scripts/work}"
 # variable a given binary does not know will abort that binary's read, so a
 # variant is only usable with the build it was written for.
 NAMELIST_CTL="${NAMELIST_CTL:-${REPO_ROOT}/namelists/namelist_ecland_lake_ctl}"
+# Last forcing year of the scored run. 2022 is the benchmark period; an earlier
+# year gives a provisional run on whatever forcing has landed so far, written
+# under its own <SITE>_2017-<END_YEAR> names so it never collides with the
+# full run. Point OUTPUT_DIR/OUTPUT_SPUNUP_DIR/CLIM_SPUNUP_DIR elsewhere too.
+END_YEAR="${END_YEAR:-2022}"
+PERIOD="2017-${END_YEAR}"
 
 echo "=== ${SITE} (${LAT}, ${LON}) ==="
 
 # --- 1. Merge the six per-year forcing files -------------------------------
-MERGED="${FORCING_DIR}/met_ecfsHT_${SITE}_2017-2022.nc"
+MERGED="${FORCING_DIR}/met_ecfsHT_${SITE}_${PERIOD}.nc"
 if [[ -f "${MERGED}" ]]; then
   echo "-- 1. merge: ${MERGED} already exists, skipping"
 else
-  echo "-- 1. merging 2017-2022 --"
+  echo "-- 1. merging ${PERIOD} --"
   YEARLY_FILES=()
-  for YEAR in 2017 2018 2019 2020 2021 2022; do
+  for YEAR in $(seq 2017 "${END_YEAR}"); do
     f="${FORCING_DIR}/met_ecfsHT_${SITE}_${YEAR}-${YEAR}.nc"
     [[ -f "$f" ]] || { echo "ERROR: missing $f" >&2; exit 1; }
     YEARLY_FILES+=("$f")
@@ -94,6 +100,8 @@ for kind in surfclim surfinit; do
   dst="${CLIM_DIR}/${kind}_${SITE}_2017-2017.nc"
   [[ -f "$src" ]] || { echo "ERROR: missing $src -- run stage_portal_job.sh for ${SITE} first" >&2; exit 1; }
   cp -p "$src" "$dst"
+  # The namelist generator reads site metadata from surfclim_<SITE>_<PERIOD>.
+  [[ "${PERIOD}" == 2017-2022 ]] || cp -p "$src" "${CLIM_DIR}/${kind}_${SITE}_${PERIOD}.nc"
 done
 
 extraction_modules() {
@@ -128,7 +136,7 @@ generate_namelist() {
 echo "-- 2/3. namelists --"
 extraction_modules
 generate_namelist "${SITE}_2017-2017"
-generate_namelist "${SITE}_2017-2022"
+generate_namelist "${SITE}_${PERIOD}"
 
 # --- 4. Spin up on 2017 -----------------------------------------------------
 echo "-- 4. spin-up (${NLOOP_SPINUP} loops over 2017) --"
@@ -150,18 +158,18 @@ python3 "${SCRIPT_DIR}/check_spinup_convergence.py" "${OUTPUT_DIR}/${SITE}_2017-
 
 # --- 5. Seed the scored run from the spin-up's equilibrium restart ---------
 mkdir -p "${CLIM_SPUNUP_DIR}" "${OUTPUT_SPUNUP_DIR}"
-cp -p "${OUTPUT_DIR}/${SITE}_2017-2017/restartout.nc" "${CLIM_SPUNUP_DIR}/surfinit_${SITE}_2017-2022.nc"
-cp -p "${OUTPUT_DIR}/${SITE}_2017-2017/restartout.nc" "${CLIM_SPUNUP_DIR}/surfclim_${SITE}_2017-2022.nc"
+cp -p "${OUTPUT_DIR}/${SITE}_2017-2017/restartout.nc" "${CLIM_SPUNUP_DIR}/surfinit_${SITE}_${PERIOD}.nc"
+cp -p "${OUTPUT_DIR}/${SITE}_2017-2017/restartout.nc" "${CLIM_SPUNUP_DIR}/surfclim_${SITE}_${PERIOD}.nc"
 
 # --- 6. Run the full, spun-up period ---------------------------------------
-echo "-- 6. scored run: 2017-2022, spun up --"
+echo "-- 6. scored run: ${PERIOD}, spun up --"
 model_run_modules
 export ECLAND_MASTER="${ECLAND_MASTER_DP}"
-rm -rf "${OUTPUT_SPUNUP_DIR}/${SITE}_2017-2022"
+rm -rf "${OUTPUT_SPUNUP_DIR}/${SITE}_${PERIOD}"
 bash "${SCRIPT_DIR}/ecland_run_model.sh" \
-  -s "${SITE}_2017-2022" -b "${ECLAND_MASTER_DP}" \
+  -s "${SITE}_${PERIOD}" -b "${ECLAND_MASTER_DP}" \
   -w "${WORK_DIR}" -o "${OUTPUT_SPUNUP_DIR}" \
   -f "${FORCING_DIR}" -i "${CLIM_SPUNUP_DIR}" -F ecfs \
-  -n "${OUTPUT_DIR}/namelist_${SITE}_2017-2022" -l 1 -R false
+  -n "${OUTPUT_DIR}/namelist_${SITE}_${PERIOD}" -l 1 -R false
 
-echo "=== ${SITE} done: ${OUTPUT_SPUNUP_DIR}/${SITE}_2017-2022 ==="
+echo "=== ${SITE} done: ${OUTPUT_SPUNUP_DIR}/${SITE}_${PERIOD} ==="

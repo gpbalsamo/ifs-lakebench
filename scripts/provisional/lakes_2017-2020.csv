@@ -1,0 +1,100 @@
+site_id,cci_lake_id,lake_name,lat,lon,status
+Ld-001,000000016,Lake Ladoga,60.765,31.648,run_complete_spunup
+Br-001,000001248,Lake Baringo,0.6334,36.0750,run_complete_spunup
+Ch-001,000000256,Lake Chilwa,-15.2834,35.7000,run_complete_spunup
+Ky-001,100000013,Lake Kyoga,1.5833,32.8792,run_complete_spunup
+Mw-001,000000119,Lake Mweru Wantipa,-8.7250,29.7209,run_complete_spunup
+Ta-001,000000055,Lake Tana,11.9542,37.3084,run_complete_spunup
+Vi-001,000000003,Lake Victoria,-1.2625,33.2334,run_complete_spunup_not_fully_converged
+Ra-001,000000173,Razazza Lake,32.8084,43.6392,run_complete_spunup
+Ur-001,000000034,Urmia Lake,37.644,45.4834,run_complete_spunup
+Ro-001,000000274,Roseires Reservoir,11.5208,34.6291,run_complete_spunup_not_fully_converged
+Te-001,000000120,Tengiz Lake,50.4607,69.1303,run_complete_spunup
+Il-001,000000192,Ilmen Lake,58.2917,31.3,run_complete_spunup
+Ha-001,000000738,Habbaniyah Lake,33.3043,43.4402,run_complete_spunup
+Na-001,000000322,Natron Lake,-2.35,36.0125,run_complete_spunup
+To-001,200000006,Lake Toshka Lakes,23.2962,30.8599,run_complete_spunup
+Ou-001,000000202,Oulujarvi Lake,64.336,27.3742,run_complete_spunup
+Tu-001,000000022,Turkana Lake,3.5209,36.2666,run_complete_spunup
+Th-001,000000077,Therthar Lake,34.1013,43.2759,run_complete_spunup
+Ma-001,000000010,Malawi Lake,-11.9709,34.5917,run_complete_spunup_not_fully_converged
+Ru-001,100000011,Rukwa Lake,-7.9542,32.2334,run_complete_spunup
+Ra-002,000001149,Rann Of Kutch Lake,23.9125,70.725,run_complete_spunup
+To-002,000000064,Tonle Sap Lake,12.8125,104.1458,run_complete_spunup
+Ar-001,000000004,Aral Sea,45.3822,59.8631,run_complete_spunup
+Pi-001,000000195,Pielinen Lake,63.2129,29.6644,run_complete_spunup
+Ch-002,000000014,"Chad Lake (2017-2020, provisional)",13.3417,14.2708,run_complete_provisional
+Ba-001,000000017,"Balqhash Lake (2017-2020, provisional)",45.9083,76.3209,run_complete_provisional
+On-001,000000018,"Onega Lake (2017-2020, provisional)",61.9045,35.3451,run_complete_provisional
+Ku-001,000000033,"Kuybyshevskoye Reservoir (2017-2020, provisional)",54.5333,49.5833,run_complete_provisional
+Ka-001,000000035,"Kariba Lake (2017-2020, provisional)",-17.225,28.0333,run_complete_provisional
+Ry-001,000000047,"Rybinkskoye Reservoir (2017-2020, provisional)",58.4791,38.1209,run_complete_provisional
+Na-002,000000048,"Nasser Reservoir (2017-2020, provisional)",22.8084,32.1591,run_complete_provisional
+Pe-001,000000050,"Peipsi Lake (2017-2020, provisional)",58.425,27.6042,run_complete_provisional
+Si-001,000000085,"Sivash Lake (2017-2020, provisional)",45.775,34.5583,run_complete_provisional
+Kr-001,000000087,"Kremenchuk Reservoir (2017-2020, provisional)",49.2833,32.6166,run_complete_provisional
+Ch-003,000000092,"Chany Lake (2017-2020, provisional)",54.8208,77.4367,run_complete_provisional
+Ka-002,000000104,"Kama Reservoir (2017-2020, provisional)",58.8209,56.25,run_complete_provisional
+Kh-001,000000112,"Khantayskoye Reservoir (2017-2020, provisional)",68.0208,88.2541,run_complete_provisional
+Vy-001,000000136,"Vygozero Lake (2017-2020, provisional)",63.5566,34.8417,run_complete_provisional
+In-001,000000144,"Inarijarvi Lake (2017-2020, provisional)",69.0289,27.8409,run_complete_provisional
+Pa-001,000000157,"Paijanne Lake (2017-2020, provisional)",61.7051,25.5654,run_complete_provisional
+Se-001,000000228,"Segozerskoye Lake (2017-2020, provisional)",63.3233,33.7452,run_complete_provisional
+Py-001,000000240,"Pyasino Lake (2017-2020, provisional)",69.7708,87.8,run_complete_provisional
+De-001,000000244,"Dead Sea (2017-2020, provisional)",31.5333,35.4875,run_complete_provisional
+Ke-001,000000346,"Keitele Lake (2017-2020, provisional)",62.9142,26.1301,run_complete_provisional
+Ga-001,000000347,"Gandhi Sagar Reservoir (2017-2020, provisional)",24.4375,75.4541,run_complete_provisional
+Na-003,000000369,"Nasijarvi Lake (2017-2020, provisional)",61.699,23.7452,run_complete_provisional
+Lo-001,000000376,"Lokka Reservoir (2017-2020, provisional)",67.962,27.6465,run_complete_provisional
+Ma-002,000000397,"Manyara Lake (2017-2020, provisional)",-3.6166,35.8208,run_complete_provisional
+Ka-003,000000422,"Kallavesi Lake (2017-2020, provisional)",62.8819,27.6019,run_complete_provisional
+Pu-001,000000530,"Puula Lake (2017-2020, provisional)",61.8116,26.6591,run_complete_provisional
+Um-001,000000548,"Umbozero Lake (2017-2020, provisional)",67.7147,34.3917,run_complete_provisional
+Ho-001,000000657,"Hoytiainen Lake (2017-2020, provisional)",62.8693,29.6288,run_complete_provisional
+Ya-001,000000936,"Yanisyarvi Lake (2017-2020, provisional)",62.0076,30.9045,run_complete_provisional
+Ma-003,000000960,"Malye Chany Lake (2017-2020, provisional)",54.5413,77.9585,run_complete_provisional
+Ni-001,000001061,"Nilakka Lake (2017-2020, provisional)",63.1196,26.4425,run_complete_provisional
+Va-001,000001201,"Vanajavesi Lake (2017-2020, provisional)",61.1495,24.1236,run_complete_provisional
+La-001,000001246,"Lappajarvi Lake (2017-2020, provisional)",63.1694,23.6679,run_complete_provisional
+Fi-001,000001357,"Fitri Lake (2017-2020, provisional)",12.7791,17.5208,run_complete_provisional
+Vu-001,000002054,"Vuohijarvi Lake (2017-2020, provisional)",61.1804,26.6945,run_complete_provisional
+Su-001,200000008,"Sua Pan Lake (2017-2020, provisional)",-20.7125,26.0875,run_complete_provisional
+Et-001,200000012,"Etosha Pan Lake (2017-2020, provisional)",-18.7875,16.3834,run_complete_provisional
+Tu-002,300000140,"Tuz Lake (2017-2020, provisional)",38.7666,33.3896,run_complete_provisional
+Ko-001,300001112,"Koitere Lake (2017-2020, provisional)",62.9671,30.6994,run_complete_provisional
+Ro-002,300001141,"Roine Lake (also covers Mallasvesi Lake) (2017-2020, provisional)",61.3476,24.1427,run_complete_provisional
+Su-002,300001611,"Sulunga Lake (2017-2020, provisional)",-6.0917,35.1834,run_complete_provisional
+Mi-001,300011716,"Miekojarvi Lake (2017-2020, provisional)",66.5934,24.383,run_complete_provisional
+Ko-002,300011834,"Kostonjarvi Lake (2017-2020, provisional)",65.8079,28.4594,run_complete_provisional
+Nu-001,300012019,"Nuasjarvi Lake (2017-2020, provisional)",64.1811,28.0078,run_complete_provisional
+Zz-001,300012023,"Zzzz Lake (2017-2020, provisional)",64.2483,29.5903,run_complete_provisional
+Al-001,300012163,"Alvajarvi Lake (2017-2020, provisional)",63.3752,25.4583,run_complete_provisional
+Py-002,300012266,"Pyhajarvi2 Lake (2017-2020, provisional)",62.7197,25.4642,run_complete_provisional
+Ka-004,300012424,"Kangasjarvi Lake (2017-2020, provisional)",62.011,27.3701,run_complete_provisional
+Py-003,300012614,"Pyhajarvi Lake (2017-2020, provisional)",60.9965,26.4708,run_complete_provisional
+Ur-002,300012628,"Urajarvi Lake (2017-2020, provisional)",60.9192,26.4275,run_complete_provisional
+To-003,300000177,"Torrens Lake (2017-2020, provisional)",-31.0375,137.6375,run_complete_provisional
+Ga-002,300000178,"Gairdner Lake (2017-2020, provisional)",-31.7042,135.8542,run_complete_provisional
+Sa-001,300010563,"Salinas Grandes Lake (2017-2020, provisional)",-38.7541,-62.95,run_complete_provisional
+Po-001,000000133,"Poopo Lake (2017-2020, provisional)",-18.8291,-67.125,run_complete_provisional
+Ey-001,100000002,"Eyre Lake (2017-2020, provisional)",-28.6583,137.3213,run_complete_provisional
+Hu-001,000000005,"Huron Lake (2017-2020, provisional)",44.6808,-82.2036,run_complete_provisional
+Mi-002,000000006,"Michigan Lake (2017-2020, provisional)",43.8584,-86.4218,run_complete_provisional
+Er-001,000000012,"Erie Lake (2017-2020, provisional)",42.1305,-81.1783,run_complete_provisional
+On-002,000000015,"Ontario Lake (2017-2020, provisional)",43.7652,-77.9531,run_complete_provisional
+Vo-001,000000024,"Volta Lake (2017-2020, provisional)",7.5667,-0.5958,run_complete_provisional
+Ma-004,000000084,"Mar Chiquita Lake (2017-2020, provisional)",-30.4833,-62.775,run_complete_provisional
+Ze-001,000000088,"Zeyskoye Reservoir (2017-2020, provisional)",54.2667,128.175,run_complete_provisional
+Ok-001,000000114,"Okeechobee Lake (2017-2020, provisional)",26.95,-80.85,run_complete_provisional
+De-002,000000154,"De Guri Reservoir (2017-2020, provisional)",7.2708,-62.9625,run_complete_provisional
+Go-001,000001424,"Goose Lake (2017-2020, provisional)",54.426,-101.5288,run_complete_provisional
+Gr-001,000000026,"Great Salt Lake (2017-2020, provisional)",41.1833,-112.5084,run_complete_provisional
+Su-003,000001509,"Summer Lake (2017-2020, provisional)",42.8333,-120.7292,run_complete_provisional
+Su-004,000000002,"Superior Lake (2017-2020, provisional)",47.7266,-88.2833,run_complete_provisional
+Ma-005,000000350,"Malheur Lake (2017-2020, provisional)",43.3126,-118.9193,run_complete_provisional
+Ab-001,000001154,"Abert Lake (2017-2020, provisional)",42.6416,-120.2041,run_complete_provisional
+Br-002,000000039,"Bratskoye Reservoir (2017-2020, provisional)",54.75,102.4834,run_complete_provisional
+Kh-002,000000045,"Khanka Lake (2017-2020, provisional)",44.9506,132.4167,run_complete_provisional
+Po-002,000000078,"Poyang Lake (also covers Jinxi Lake) (2017-2020, provisional)",29.2041,116.275,run_complete_provisional
+Vi-002,000000080,"Vilyuy Reservoir (2017-2020, provisional)",62.7584,111.075,run_complete_provisional
+Do-001,000000620,"Dongting Lake (also covers Luhu Lake) (2017-2020, provisional)",29.125,112.4916,run_complete_provisional
