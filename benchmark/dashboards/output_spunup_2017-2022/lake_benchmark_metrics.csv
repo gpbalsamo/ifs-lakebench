@@ -367,3 +367,31 @@ Su-004,Superior Lake,overpass,TLWML,1980,0.92,2.1137,0.9725,0.3353
 Su-004,Superior Lake,overpass,AvgSurfT,1980,-0.3192,4.4507,0.899,0.6315
 Su-004,Superior Lake,daily_mean,TLWML,1980,0.9701,2.1661,0.9727,0.3429
 Su-004,Superior Lake,daily_mean,AvgSurfT,1980,-0.0813,4.1838,0.9086,0.619
+Ma-005,Malheur Lake,overpass,TLWML,563,-0.604,2.9014,0.9462,0.2939
+Ma-005,Malheur Lake,overpass,AvgSurfT,563,-0.7914,3.2204,0.9343,0.3229
+Ma-005,Malheur Lake,daily_mean,TLWML,563,-0.385,3.0116,0.941,0.3074
+Ma-005,Malheur Lake,daily_mean,AvgSurfT,563,-0.295,3.116,0.9358,0.3158
+Ab-001,Abert Lake,overpass,TLWML,1107,0.2618,2.1628,0.9725,0.2347
+Ab-001,Abert Lake,overpass,AvgSurfT,1107,0.4118,2.7375,0.9443,0.2511
+Ab-001,Abert Lake,daily_mean,TLWML,1107,0.2019,2.2429,0.9692,0.2424
+Ab-001,Abert Lake,daily_mean,AvgSurfT,1107,0.6552,2.9151,0.9424,0.291
+Br-002,Bratskoye Reservoir,overpass,TLWML,1117,-1.1993,3.8233,0.9396,0.474
+Br-002,Bratskoye Reservoir,overpass,AvgSurfT,1117,-2.1405,5.2885,0.9255,0.6099
+Br-002,Bratskoye Reservoir,daily_mean,TLWML,1117,-1.1206,3.8004,0.9416,0.4746
+Br-002,Bratskoye Reservoir,daily_mean,AvgSurfT,1117,-1.9477,5.2721,0.9365,0.6269
+Kh-002,Khanka Lake,overpass,TLWML,984,-0.2297,2.5953,0.9683,0.2753
+Kh-002,Khanka Lake,overpass,AvgSurfT,984,-0.5385,2.7913,0.9634,0.2976
+Kh-002,Khanka Lake,daily_mean,TLWML,984,0.0675,2.6758,0.9696,0.2909
+Kh-002,Khanka Lake,daily_mean,AvgSurfT,984,-0.0323,2.8751,0.9675,0.319
+Po-002,Poyang Lake (also covers Jinxi Lake),overpass,TLWML,769,0.3402,1.7318,0.9794,0.2071
+Po-002,Poyang Lake (also covers Jinxi Lake),overpass,AvgSurfT,769,-0.1359,1.5783,0.9798,0.1937
+Po-002,Poyang Lake (also covers Jinxi Lake),daily_mean,TLWML,770,0.8224,1.9052,0.9784,0.2258
+Po-002,Poyang Lake (also covers Jinxi Lake),daily_mean,AvgSurfT,770,0.804,1.8822,0.9788,0.2229
+Vi-002,Vilyuy Reservoir,overpass,TLWML,780,-3.0475,6.7936,0.6287,0.8035
+Vi-002,Vilyuy Reservoir,overpass,AvgSurfT,780,-2.9895,6.5454,0.6562,0.7763
+Vi-002,Vilyuy Reservoir,daily_mean,TLWML,780,-2.9431,6.7181,0.6376,0.7974
+Vi-002,Vilyuy Reservoir,daily_mean,AvgSurfT,780,-2.8791,6.5187,0.6641,0.7897
+Do-001,Dongting Lake (also covers Luhu Lake),overpass,TLWML,720,0.6688,2.5658,0.9703,0.3047
+Do-001,Dongting Lake (also covers Luhu Lake),overpass,AvgSurfT,720,-0.1274,2.178,0.9719,0.2652
+Do-001,Dongting Lake (also covers Luhu Lake),daily_mean,TLWML,720,1.3036,2.7675,0.9669,0.3196
+Do-001,Dongting Lake (also covers Luhu Lake),daily_mean,AvgSurfT,720,1.2721,2.7393,0.9674,0.3164
