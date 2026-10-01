@@ -307,3 +307,63 @@ Sa-001,Salinas Grandes Lake,overpass,TLWML,986,0.7201,2.2562,0.9579,0.2985
 Sa-001,Salinas Grandes Lake,overpass,AvgSurfT,986,0.4504,2.2726,0.9556,0.3018
 Sa-001,Salinas Grandes Lake,daily_mean,TLWML,986,1.0501,2.3948,0.9564,0.3187
 Sa-001,Salinas Grandes Lake,daily_mean,AvgSurfT,986,1.043,2.411,0.9554,0.321
+Po-001,Poopo Lake,overpass,TLWML,1552,3.0755,3.3508,0.9468,0.9068
+Po-001,Poopo Lake,overpass,AvgSurfT,1552,2.7416,3.0899,0.9453,0.8153
+Po-001,Poopo Lake,daily_mean,TLWML,1552,3.4354,3.6774,0.9455,1.0078
+Po-001,Poopo Lake,daily_mean,AvgSurfT,1552,3.4339,3.6773,0.9451,1.0073
+Ey-001,Eyre Lake,overpass,TLWML,1131,0.6435,2.4799,0.9441,0.3584
+Ey-001,Eyre Lake,overpass,AvgSurfT,1131,0.4504,2.5003,0.9421,0.36
+Ey-001,Eyre Lake,daily_mean,TLWML,1132,1.245,2.502,0.9538,0.3718
+Ey-001,Eyre Lake,daily_mean,AvgSurfT,1132,1.2434,2.5085,0.9532,0.3725
+Hu-001,Huron Lake,overpass,TLWML,1924,0.4604,1.838,0.9742,0.2169
+Hu-001,Huron Lake,overpass,AvgSurfT,1924,0.4101,2.686,0.9437,0.2815
+Hu-001,Huron Lake,daily_mean,TLWML,1924,0.5135,1.8589,0.9745,0.2203
+Hu-001,Huron Lake,daily_mean,AvgSurfT,1924,0.4658,2.6389,0.9484,0.2926
+Mi-002,Michigan Lake,overpass,TLWML,1943,1.6922,3.4041,0.9691,0.3825
+Mi-002,Michigan Lake,overpass,AvgSurfT,1943,1.3351,4.2005,0.9355,0.4677
+Mi-002,Michigan Lake,daily_mean,TLWML,1944,1.572,3.1714,0.9714,0.3619
+Mi-002,Michigan Lake,daily_mean,AvgSurfT,1944,1.3348,4.0157,0.9438,0.4619
+Er-001,Erie Lake,overpass,TLWML,1667,0.8836,2.4131,0.9738,0.2318
+Er-001,Erie Lake,overpass,AvgSurfT,1667,0.8109,2.6805,0.9632,0.2505
+Er-001,Erie Lake,daily_mean,TLWML,1668,0.9744,2.3863,0.9761,0.2334
+Er-001,Erie Lake,daily_mean,AvgSurfT,1668,1.0105,2.8004,0.9641,0.2703
+On-002,Ontario Lake,overpass,TLWML,1721,0.7076,1.829,0.9839,0.2054
+On-002,Ontario Lake,overpass,AvgSurfT,1721,0.7571,2.2919,0.968,0.2259
+On-002,Ontario Lake,daily_mean,TLWML,1721,0.6957,1.8338,0.9831,0.2058
+On-002,Ontario Lake,daily_mean,AvgSurfT,1721,0.79,2.1966,0.9728,0.2298
+Vo-001,Volta Lake,overpass,TLWML,399,2.0195,2.5807,0.5382,1.7754
+Vo-001,Volta Lake,overpass,AvgSurfT,399,1.0165,1.8445,0.5491,1.1909
+Vo-001,Volta Lake,daily_mean,TLWML,400,2.3849,2.8085,0.4897,2.0076
+Vo-001,Volta Lake,daily_mean,AvgSurfT,400,2.3866,2.8077,0.4918,2.0086
+Ma-004,Mar Chiquita Lake,overpass,TLWML,1543,1.5707,2.0815,0.9731,0.3431
+Ma-004,Mar Chiquita Lake,overpass,AvgSurfT,1543,1.1643,1.7026,0.976,0.2743
+Ma-004,Mar Chiquita Lake,daily_mean,TLWML,1543,1.375,1.814,0.9783,0.3009
+Ma-004,Mar Chiquita Lake,daily_mean,AvgSurfT,1543,1.369,1.8154,0.9779,0.3011
+Ze-001,Zeyskoye Reservoir,overpass,TLWML,823,-1.4823,5.3732,0.7397,0.7086
+Ze-001,Zeyskoye Reservoir,overpass,AvgSurfT,823,-2.0467,6.2092,0.7324,0.788
+Ze-001,Zeyskoye Reservoir,daily_mean,TLWML,823,-1.3937,5.3202,0.7462,0.7062
+Ze-001,Zeyskoye Reservoir,daily_mean,AvgSurfT,823,-1.8561,6.1563,0.7408,0.7937
+Ok-001,Okeechobee Lake,overpass,TLWML,877,0.6372,1.4719,0.932,0.4406
+Ok-001,Okeechobee Lake,overpass,AvgSurfT,877,0.1431,1.2459,0.9318,0.3723
+Ok-001,Okeechobee Lake,daily_mean,TLWML,878,0.8661,1.5679,0.9261,0.4774
+Ok-001,Okeechobee Lake,daily_mean,AvgSurfT,878,0.8611,1.5722,0.925,0.4787
+De-002,De Guri Reservoir,overpass,TLWML,17,,,,
+De-002,De Guri Reservoir,overpass,AvgSurfT,17,,,,
+De-002,De Guri Reservoir,daily_mean,TLWML,17,,,,
+De-002,De Guri Reservoir,daily_mean,AvgSurfT,17,,,,
+Go-001,Goose Lake,overpass,TLWML,531,-0.7103,4.3785,0.8587,0.5816
+Go-001,Goose Lake,overpass,AvgSurfT,531,-0.964,4.2065,0.8611,0.5289
+Go-001,Goose Lake,daily_mean,TLWML,531,-0.5396,4.4522,0.8535,0.6016
+Go-001,Goose Lake,daily_mean,AvgSurfT,531,-0.5461,4.4493,0.8558,0.603
+Gr-001,Great Salt Lake,overpass,TLWML,1807,-0.1008,1.9156,0.9816,0.1646
+Gr-001,Great Salt Lake,overpass,AvgSurfT,1807,-0.5184,2.5542,0.9664,0.208
+Gr-001,Great Salt Lake,daily_mean,TLWML,1807,0.2924,2.0691,0.9812,0.1893
+Gr-001,Great Salt Lake,daily_mean,AvgSurfT,1807,0.2263,2.6376,0.9698,0.2359
+Su-003,Summer Lake,overpass,TLWML,818,0.6447,2.0377,0.9747,0.214
+Su-003,Summer Lake,overpass,AvgSurfT,818,0.5784,2.7726,0.9489,0.2427
+Su-003,Summer Lake,daily_mean,TLWML,818,0.661,2.1465,0.9719,0.2257
+Su-003,Summer Lake,daily_mean,AvgSurfT,818,1.0592,2.835,0.9515,0.2674
+Su-004,Superior Lake,overpass,TLWML,1980,0.92,2.1137,0.9725,0.3353
+Su-004,Superior Lake,overpass,AvgSurfT,1980,-0.3192,4.4507,0.899,0.6315
+Su-004,Superior Lake,daily_mean,TLWML,1980,0.9701,2.1661,0.9727,0.3429
+Su-004,Superior Lake,daily_mean,AvgSurfT,1980,-0.0813,4.1838,0.9086,0.619
